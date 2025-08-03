@@ -21,14 +21,14 @@ class ModernUI:
         self.root.bind('<Configure>', self.on_window_resize)
         
     def setup_window_size(self):
-        """设置窗口默认大小为显示器窗口的一半"""
+        """设置窗口默认大小为适合显示完整内容"""
         # 获取屏幕尺寸
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
         
-        # 计算窗口大小为屏幕的一半
-        window_width = screen_width // 2
-        window_height = screen_height // 2
+        # 设置合适的窗口大小（宽度为屏幕的70%，高度为屏幕的80%）
+        window_width = int(screen_width * 0.7)
+        window_height = int(screen_height * 0.8)
         
         # 计算窗口位置（居中）
         x = (screen_width - window_width) // 2
@@ -38,7 +38,7 @@ class ModernUI:
         self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
         
         # 设置最小窗口大小
-        self.root.minsize(400, 300)
+        self.root.minsize(800, 600)
         
     def create_menu(self):
         """创建菜单栏"""
@@ -86,12 +86,7 @@ class ModernUI:
         self.test_27930_frame = ttk.Frame(self.notebook, padding="10")
         self.notebook.add(self.test_27930_frame, text="27930测试")
         
-        # 状态栏
-        self.status_var = tk.StringVar()
-        self.status_var.set("就绪")
-        status_bar = ttk.Label(main_frame, textvariable=self.status_var, 
-                              relief=tk.SUNKEN, anchor=tk.W)
-        status_bar.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
+        # 删除状态栏，不再显示窗口大小信息
         
         # 应用现代化样式
         self.apply_modern_style()
@@ -331,13 +326,11 @@ class ModernUI:
         """Modbus测试功能"""
         # 选中Modbus测试Tab页面
         self.notebook.select(0)  # 选择第一个Tab（Modbus测试）
-        self.status_var.set("已切换到Modbus测试页面")
         
     def test_27930(self):
         """27930测试功能"""
         # 选中27930测试Tab页面
         self.notebook.select(1)  # 选择第二个Tab（27930测试）
-        self.status_var.set("已切换到27930测试页面")
         
     # Modbus相关方法
     def open_serial(self):
@@ -347,7 +340,6 @@ class ModernUI:
             # 目前只是模拟
             port = self.com_port_var.get()
             baud = int(self.baud_rate_var.get())
-            self.status_var.set(f"串口 {port} 已打开，波特率: {baud}")
             self.add_raw_data(f"[{self.get_timestamp()}] 串口 {port} 已打开，波特率: {baud}")
         except Exception as e:
             messagebox.showerror("错误", f"打开串口失败: {str(e)}")
@@ -356,7 +348,6 @@ class ModernUI:
         """关闭串口"""
         try:
             # 这里应该实现实际的串口关闭逻辑
-            self.status_var.set("串口已关闭")
             self.add_raw_data(f"[{self.get_timestamp()}] 串口已关闭")
         except Exception as e:
             messagebox.showerror("错误", f"关闭串口失败: {str(e)}")
@@ -771,7 +762,6 @@ class ModernUI:
         """清空数据显示"""
         self.raw_data_text.delete(1.0, tk.END)
         self.decode_data_text.delete(1.0, tk.END)
-        self.status_var.set("数据已清空")
         
     def add_raw_data(self, data):
         """添加原始数据"""
@@ -802,17 +792,15 @@ class ModernUI:
 创建时间：2024年"""
         
         messagebox.showinfo("关于本软件", about_text)
-        self.status_var.set("显示关于信息")
         
     def on_window_resize(self, event):
         """窗口大小改变事件处理"""
-        if event.widget == self.root:
-            self.status_var.set(f"窗口大小: {event.width} x {event.height}")
+        # 窗口大小改变时不做任何处理，因为已删除状态栏
+        pass
     
     def open_modbus_parser(self):
         """打开Modbus解析对码窗口"""
         parser_window = ModbusParserWindow(self.root)
-        self.status_var.set("已打开Modbus解析对码窗口")
 
 
 class ModbusParserWindow:
@@ -839,10 +827,6 @@ class ModbusParserWindow:
         
     def create_interface(self):
         """创建解析界面"""
-        # 状态栏变量初始化
-        self.status_var = tk.StringVar()
-        self.status_var.set("就绪")
-        
         # 主框架
         main_frame = ttk.Frame(self.window, padding="10")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
@@ -851,7 +835,7 @@ class ModbusParserWindow:
         self.window.columnconfigure(0, weight=1)
         self.window.rowconfigure(0, weight=1)
         main_frame.columnconfigure(1, weight=1)
-        main_frame.rowconfigure(1, weight=1)
+        main_frame.rowconfigure(0, weight=1)
         
         # 创建Tab控件
         self.notebook = ttk.Notebook(main_frame)
@@ -861,11 +845,6 @@ class ModbusParserWindow:
         self.function_code_frame = ttk.Frame(self.notebook, padding="10")
         self.notebook.add(self.function_code_frame, text="功能码解析")
         self.create_function_code_parser()
-        
-        # 状态栏
-        status_bar = ttk.Label(main_frame, textvariable=self.status_var, 
-                              relief=tk.SUNKEN, anchor=tk.W)
-        status_bar.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
         
     def create_function_code_parser(self):
         """创建功能码解析界面"""
@@ -955,7 +934,6 @@ class ModbusParserWindow:
     def on_function_code_change(self, event=None):
         """功能码改变事件"""
         function_code = self.function_code_var.get()
-        self.status_var.set(f"当前功能码: {function_code}")
         
         # 根据功能码设置默认数据
         default_data = {
@@ -992,11 +970,8 @@ class ModbusParserWindow:
             self.result_text.delete(1.0, tk.END)
             self.result_text.insert(tk.END, result)
             
-            self.status_var.set(f"数据解析完成 - 功能码: {function_code}")
-            
         except Exception as e:
             messagebox.showerror("解析错误", str(e))
-            self.status_var.set("数据解析失败")
             
     def parse_modbus_data(self, function_code, data_str):
         """解析Modbus数据"""
@@ -1235,7 +1210,6 @@ class ModbusParserWindow:
             import json
             with open(self.annotation_file, 'w', encoding='utf-8') as f:
                 json.dump(self.annotations, f, ensure_ascii=False, indent=2)
-            self.status_var.set("注释已保存")
             messagebox.showinfo("成功", "注释已保存到文件")
         except Exception as e:
             messagebox.showerror("错误", f"保存注释失败: {str(e)}")
@@ -1248,16 +1222,11 @@ class ModbusParserWindow:
             if os.path.exists(self.annotation_file):
                 with open(self.annotation_file, 'r', encoding='utf-8') as f:
                     self.annotations = json.load(f)
-                if hasattr(self, 'status_var'):
-                    self.status_var.set("注释已加载")
             else:
                 self.annotations = {}
-                if hasattr(self, 'status_var'):
-                    self.status_var.set("注释文件不存在，已创建新的注释字典")
         except Exception as e:
             self.annotations = {}
-            if hasattr(self, 'status_var'):
-                messagebox.showerror("错误", f"加载注释失败: {str(e)}")
+            messagebox.showerror("错误", f"加载注释失败: {str(e)}")
             
     def export_annotations(self):
         """导出注释为文本文件"""
@@ -1274,7 +1243,6 @@ class ModbusParserWindow:
                 for key, value in self.annotations.items():
                     f.write(f"{key}: {value}\n")
                     
-            self.status_var.set(f"注释已导出到 {filename}")
             messagebox.showinfo("成功", f"注释已导出到文件: {filename}")
         except Exception as e:
             messagebox.showerror("错误", f"导出注释失败: {str(e)}")
@@ -1283,7 +1251,6 @@ class ModbusParserWindow:
         """清空注释"""
         if messagebox.askyesno("确认", "确定要清空所有注释吗？"):
             self.annotations = {}
-            self.status_var.set("注释已清空")
             
     def add_annotation(self):
         """添加或更新注释"""
@@ -1295,7 +1262,6 @@ class ModbusParserWindow:
             return
             
         self.annotations[key] = value
-        self.status_var.set(f"注释已添加/更新: {key}")
         
         # 清空输入框
         self.annotation_key_var.set("")
@@ -1307,7 +1273,6 @@ class ModbusParserWindow:
         if key in self.annotations:
             if messagebox.askyesno("确认", f"确定要删除注释 '{key}' 吗？"):
                 del self.annotations[key]
-                self.status_var.set(f"注释已删除: {key}")
                 # 清空输入框
                 self.annotation_key_var.set("")
                 self.annotation_value_var.set("")
@@ -1319,7 +1284,6 @@ class ModbusParserWindow:
         key = self.annotation_key_var.get().strip()
         if key in self.annotations:
             self.annotation_value_var.set(self.annotations[key])
-            self.status_var.set(f"找到注释: {key}")
         else:
             messagebox.showwarning("警告", f"注释 '{key}' 不存在")
             
