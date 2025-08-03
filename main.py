@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import os
+import serial.tools.list_ports
 
 class ModernUI:
     def __init__(self, root):
@@ -115,62 +116,78 @@ class ModernUI:
         
         # 串口号设置
         ttk.Label(settings_frame, text="串口号:").grid(row=0, column=0, sticky=tk.W, pady=2)
-        self.com_port_var = tk.StringVar(value="COM1")
-        com_port_combo = ttk.Combobox(settings_frame, textvariable=self.com_port_var, 
-                                     values=["COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8"], 
-                                     width=10, state="readonly")
-        com_port_combo.grid(row=0, column=1, sticky=tk.W, pady=2)
+        com_port_frame = ttk.Frame(settings_frame)
+        com_port_frame.grid(row=0, column=1, sticky=tk.W, pady=2)
+        
+        self.com_port_var = tk.StringVar()
+        self.com_port_combo = ttk.Combobox(com_port_frame, textvariable=self.com_port_var, 
+                                          width=12, state="readonly")
+        self.com_port_combo.grid(row=0, column=0, padx=(0, 2))
+        
+        ttk.Button(com_port_frame, text="刷新", command=self.refresh_com_ports, width=6).grid(row=0, column=1)
+        
+        # 串口信息显示
+        ttk.Label(settings_frame, text="串口信息:").grid(row=1, column=0, sticky=tk.W, pady=2)
+        self.com_info_text = tk.Text(settings_frame, height=4, width=40, font=("Consolas", 8))
+        com_info_scrollbar = ttk.Scrollbar(settings_frame, orient="vertical", command=self.com_info_text.yview)
+        self.com_info_text.configure(yscrollcommand=com_info_scrollbar.set)
+        
+        self.com_info_text.grid(row=1, column=1, sticky=(tk.W, tk.E), pady=2)
+        com_info_scrollbar.grid(row=1, column=2, sticky=(tk.N, tk.S), pady=2)
+        
+        # 初始化串口列表
+        self.refresh_com_ports()
         
         # 波特率设置
-        ttk.Label(settings_frame, text="波特率:").grid(row=1, column=0, sticky=tk.W, pady=2)
+        ttk.Label(settings_frame, text="波特率:").grid(row=2, column=0, sticky=tk.W, pady=2)
         self.baud_rate_var = tk.StringVar(value="9600")
         baud_rate_combo = ttk.Combobox(settings_frame, textvariable=self.baud_rate_var,
                                       values=["1200", "2400", "4800", "9600", "19200", "38400", "57600", "115200"],
                                       width=10, state="readonly")
-        baud_rate_combo.grid(row=1, column=1, sticky=tk.W, pady=2)
+        baud_rate_combo.grid(row=2, column=1, sticky=tk.W, pady=2)
         
         # 数据位设置
-        ttk.Label(settings_frame, text="数据位:").grid(row=2, column=0, sticky=tk.W, pady=2)
+        ttk.Label(settings_frame, text="数据位:").grid(row=3, column=0, sticky=tk.W, pady=2)
         self.data_bits_var = tk.StringVar(value="8")
         data_bits_combo = ttk.Combobox(settings_frame, textvariable=self.data_bits_var,
                                       values=["5", "6", "7", "8"], width=10, state="readonly")
-        data_bits_combo.grid(row=2, column=1, sticky=tk.W, pady=2)
+        data_bits_combo.grid(row=3, column=1, sticky=tk.W, pady=2)
         
         # 停止位设置
-        ttk.Label(settings_frame, text="停止位:").grid(row=3, column=0, sticky=tk.W, pady=2)
+        ttk.Label(settings_frame, text="停止位:").grid(row=4, column=0, sticky=tk.W, pady=2)
         self.stop_bits_var = tk.StringVar(value="1")
         stop_bits_combo = ttk.Combobox(settings_frame, textvariable=self.stop_bits_var,
                                       values=["1", "1.5", "2"], width=10, state="readonly")
-        stop_bits_combo.grid(row=3, column=1, sticky=tk.W, pady=2)
+        stop_bits_combo.grid(row=4, column=1, sticky=tk.W, pady=2)
         
         # 校验位设置
-        ttk.Label(settings_frame, text="校验位:").grid(row=4, column=0, sticky=tk.W, pady=2)
+        ttk.Label(settings_frame, text="校验位:").grid(row=5, column=0, sticky=tk.W, pady=2)
         self.parity_var = tk.StringVar(value="无")
         parity_combo = ttk.Combobox(settings_frame, textvariable=self.parity_var,
                                    values=["无", "奇校验", "偶校验"], width=10, state="readonly")
-        parity_combo.grid(row=4, column=1, sticky=tk.W, pady=2)
+        parity_combo.grid(row=5, column=1, sticky=tk.W, pady=2)
         
         # 分隔线
         separator1 = ttk.Separator(settings_frame, orient='horizontal')
-        separator1.grid(row=5, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=10)
+        separator1.grid(row=6, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
         
         # Modbus功能设置
-        ttk.Label(settings_frame, text="Modbus功能:", font=("Arial", 10, "bold")).grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(0, 5))
+        ttk.Label(settings_frame, text="Modbus功能:", font=("Arial", 10, "bold")).grid(row=7, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
         
         # 功能码选择
-        ttk.Label(settings_frame, text="功能码:").grid(row=7, column=0, sticky=tk.W, pady=2)
+        ttk.Label(settings_frame, text="功能码:").grid(row=8, column=0, sticky=tk.W, pady=2)
         self.function_code_var = tk.StringVar(value="03 - 读保持寄存器")
         function_code_combo = ttk.Combobox(settings_frame, textvariable=self.function_code_var,
                                           values=["01 - 读线圈状态", "02 - 读离散输入", "03 - 读保持寄存器", 
                                                  "04 - 读输入寄存器", "05 - 写单个线圈", "06 - 写单个寄存器",
                                                  "15 - 写多个线圈", "16 - 写多个寄存器"], 
                                           width=15, state="readonly")
-        function_code_combo.grid(row=7, column=1, sticky=tk.W, pady=2)
+        function_code_combo.grid(row=8, column=1, sticky=tk.W, pady=2)
         
         # 从站地址
-        ttk.Label(settings_frame, text="从站地址:").grid(row=8, column=0, sticky=tk.W, pady=2)
+        ttk.Label(settings_frame, text="从站地址:").grid(row=9, column=0, sticky=tk.W, pady=2)
         slave_address_frame = ttk.Frame(settings_frame)
-        slave_address_frame.grid(row=8, column=1, sticky=tk.W, pady=2)
+        slave_address_frame.grid(row=9, column=1, sticky=tk.W, pady=2)
         
         self.slave_address_var = tk.StringVar(value="1")
         slave_address_entry = ttk.Entry(slave_address_frame, textvariable=self.slave_address_var, width=8)
@@ -183,9 +200,9 @@ class ModernUI:
         slave_address_base_combo.bind('<<ComboboxSelected>>', self.on_slave_address_base_change)
         
         # 寄存器地址
-        ttk.Label(settings_frame, text="寄存器地址:").grid(row=9, column=0, sticky=tk.W, pady=2)
+        ttk.Label(settings_frame, text="寄存器地址:").grid(row=10, column=0, sticky=tk.W, pady=2)
         register_address_frame = ttk.Frame(settings_frame)
-        register_address_frame.grid(row=9, column=1, sticky=tk.W, pady=2)
+        register_address_frame.grid(row=10, column=1, sticky=tk.W, pady=2)
         
         self.register_address_var = tk.StringVar(value="0")
         register_address_entry = ttk.Entry(register_address_frame, textvariable=self.register_address_var, width=8)
@@ -198,9 +215,9 @@ class ModernUI:
         register_address_base_combo.bind('<<ComboboxSelected>>', self.on_register_address_base_change)
         
         # 寄存器数量
-        ttk.Label(settings_frame, text="寄存器数量:").grid(row=10, column=0, sticky=tk.W, pady=2)
+        ttk.Label(settings_frame, text="寄存器数量:").grid(row=11, column=0, sticky=tk.W, pady=2)
         register_count_frame = ttk.Frame(settings_frame)
-        register_count_frame.grid(row=10, column=1, sticky=tk.W, pady=2)
+        register_count_frame.grid(row=11, column=1, sticky=tk.W, pady=2)
         
         self.register_count_var = tk.StringVar(value="1")
         register_count_entry = ttk.Entry(register_count_frame, textvariable=self.register_count_var, width=8)
@@ -214,19 +231,19 @@ class ModernUI:
         
         # 分隔线
         separator2 = ttk.Separator(settings_frame, orient='horizontal')
-        separator2.grid(row=11, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=10)
+        separator2.grid(row=12, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
         
         # 数据显示设置
-        ttk.Label(settings_frame, text="显示设置:", font=("Arial", 10, "bold")).grid(row=12, column=0, columnspan=2, sticky=tk.W, pady=(0, 5))
+        ttk.Label(settings_frame, text="显示设置:", font=("Arial", 10, "bold")).grid(row=13, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
         
         # 数据显示格式
         self.data_format_var = tk.StringVar(value="HEX")
-        ttk.Radiobutton(settings_frame, text="十六进制", variable=self.data_format_var, value="HEX").grid(row=13, column=0, columnspan=2, sticky=tk.W, pady=1)
-        ttk.Radiobutton(settings_frame, text="十进制", variable=self.data_format_var, value="DEC").grid(row=14, column=0, columnspan=2, sticky=tk.W, pady=1)
+        ttk.Radiobutton(settings_frame, text="十六进制", variable=self.data_format_var, value="HEX").grid(row=14, column=0, columnspan=3, sticky=tk.W, pady=1)
+        ttk.Radiobutton(settings_frame, text="十进制", variable=self.data_format_var, value="DEC").grid(row=15, column=0, columnspan=3, sticky=tk.W, pady=1)
         
         # 控制按钮
         button_frame = ttk.Frame(settings_frame)
-        button_frame.grid(row=15, column=0, columnspan=2, pady=10)
+        button_frame.grid(row=16, column=0, columnspan=3, pady=10)
         
         ttk.Button(button_frame, text="打开串口", command=self.open_serial, style="Accent.TButton").grid(row=0, column=0, padx=2)
         ttk.Button(button_frame, text="关闭串口", command=self.close_serial).grid(row=0, column=1, padx=2)
@@ -236,18 +253,18 @@ class ModernUI:
         
         # 分隔线
         separator3 = ttk.Separator(settings_frame, orient='horizontal')
-        separator3.grid(row=16, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=10)
+        separator3.grid(row=17, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
         
         # CRC测试区域
-        ttk.Label(settings_frame, text="CRC测试:", font=("Arial", 10, "bold")).grid(row=17, column=0, columnspan=2, sticky=tk.W, pady=(0, 5))
+        ttk.Label(settings_frame, text="CRC测试:", font=("Arial", 10, "bold")).grid(row=18, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
         
-        ttk.Label(settings_frame, text="数据(HEX):").grid(row=18, column=0, sticky=tk.W, pady=2)
+        ttk.Label(settings_frame, text="数据(HEX):").grid(row=19, column=0, sticky=tk.W, pady=2)
         self.crc_test_data_var = tk.StringVar(value="01 03 00 01 00 01")
         crc_test_entry = ttk.Entry(settings_frame, textvariable=self.crc_test_data_var, width=30)
-        crc_test_entry.grid(row=18, column=1, sticky=tk.W, pady=2)
+        crc_test_entry.grid(row=19, column=1, sticky=tk.W, pady=2)
         
         crc_test_button_frame = ttk.Frame(settings_frame)
-        crc_test_button_frame.grid(row=19, column=0, columnspan=2, pady=5)
+        crc_test_button_frame.grid(row=20, column=0, columnspan=3, pady=5)
         
         ttk.Button(crc_test_button_frame, text="计算CRC", command=self.calculate_crc_test).grid(row=0, column=0, padx=2)
         ttk.Button(crc_test_button_frame, text="验证CRC", command=self.verify_crc_test).grid(row=0, column=1, padx=2)
@@ -639,6 +656,59 @@ class ModernUI:
                     pass
         except Exception as e:
             pass
+        
+    def refresh_com_ports(self):
+        """刷新串口列表"""
+        try:
+            # 获取所有可用串口
+            ports = list(serial.tools.list_ports.comports())
+            
+            if not ports:
+                # 如果没有检测到串口，显示默认列表
+                port_list = ["COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8"]
+                self.com_port_combo['values'] = port_list
+                if not self.com_port_var.get():
+                    self.com_port_var.set("COM1")
+                
+                # 更新串口信息显示
+                self.com_info_text.delete(1.0, tk.END)
+                self.com_info_text.insert(tk.END, "未检测到可用串口\n")
+                self.com_info_text.insert(tk.END, "请检查串口设备连接\n")
+                self.com_info_text.insert(tk.END, "或手动选择串口号")
+            else:
+                # 更新串口列表
+                port_list = [port.device for port in ports]
+                self.com_port_combo['values'] = port_list
+                
+                # 如果当前选择的串口不在列表中，选择第一个
+                if self.com_port_var.get() not in port_list:
+                    self.com_port_var.set(port_list[0] if port_list else "")
+                
+                # 更新串口信息显示
+                self.com_info_text.delete(1.0, tk.END)
+                for port in ports:
+                    info = f"{port.device}: {port.description}\n"
+                    if port.manufacturer:
+                        info += f"  制造商: {port.manufacturer}\n"
+                    if port.product:
+                        info += f"  产品: {port.product}\n"
+                    if port.hwid:
+                        info += f"  硬件ID: {port.hwid}\n"
+                    info += "\n"
+                    self.com_info_text.insert(tk.END, info)
+                    
+        except Exception as e:
+            # 如果pyserial不可用，使用默认列表
+            port_list = ["COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8"]
+            self.com_port_combo['values'] = port_list
+            if not self.com_port_var.get():
+                self.com_port_var.set("COM1")
+            
+            # 更新串口信息显示
+            self.com_info_text.delete(1.0, tk.END)
+            self.com_info_text.insert(tk.END, "串口检测功能不可用\n")
+            self.com_info_text.insert(tk.END, "请手动选择串口号\n")
+            self.com_info_text.insert(tk.END, f"错误: {str(e)}")
         
     def verify_crc(self, data):
         """验证CRC校验码"""
