@@ -154,10 +154,18 @@ class ModernUI:
         
         # 校验位设置
         ttk.Label(settings_frame, text="校验位:").grid(row=5, column=0, sticky=tk.W, pady=2)
+        parity_frame = ttk.Frame(settings_frame)
+        parity_frame.grid(row=5, column=1, sticky=tk.W, pady=2)
+        
         self.parity_var = tk.StringVar(value="无")
-        parity_combo = ttk.Combobox(settings_frame, textvariable=self.parity_var,
+        parity_combo = ttk.Combobox(parity_frame, textvariable=self.parity_var,
                                    values=["无", "奇校验", "偶校验"], width=10, state="readonly")
-        parity_combo.grid(row=5, column=1, sticky=tk.W, pady=2)
+        parity_combo.grid(row=0, column=0, padx=(0, 15))
+        
+        # 串口开关按钮
+        self.serial_status = False  # 串口状态：False=关闭，True=打开
+        self.serial_button = ttk.Button(parity_frame, text="打开", command=self.toggle_serial, style="Accent.TButton", width=6)
+        self.serial_button.grid(row=0, column=1)
         
         # 分隔线
         separator1 = ttk.Separator(settings_frame, orient='horizontal')
@@ -221,44 +229,58 @@ class ModernUI:
         register_count_base_combo.grid(row=0, column=1)
         register_count_base_combo.bind('<<ComboboxSelected>>', self.on_register_count_base_change)
         
+        # Scan Rate设置
+        ttk.Label(settings_frame, text="Scan Rate:").grid(row=12, column=0, sticky=tk.W, pady=2)
+        scan_rate_frame = ttk.Frame(settings_frame)
+        scan_rate_frame.grid(row=12, column=1, sticky=tk.W, pady=2)
+        
+        self.scan_rate_var = tk.StringVar(value="1000")
+        scan_rate_entry = ttk.Entry(scan_rate_frame, textvariable=self.scan_rate_var, width=8)
+        scan_rate_entry.grid(row=0, column=0, padx=(0, 5))
+        
+        ttk.Label(scan_rate_frame, text="ms").grid(row=0, column=1)
+        
+        # 定时器状态
+        self.scan_timer = None
+        self.scanning = False
+        
         # 分隔线
         separator2 = ttk.Separator(settings_frame, orient='horizontal')
-        separator2.grid(row=12, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
+        separator2.grid(row=13, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
         
         # 数据显示设置
-        ttk.Label(settings_frame, text="显示设置:", font=("Arial", 10, "bold")).grid(row=13, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
+        ttk.Label(settings_frame, text="显示设置:", font=("Arial", 10, "bold")).grid(row=14, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
         
         # 数据显示格式
         self.data_format_var = tk.StringVar(value="HEX")
         format_frame = ttk.Frame(settings_frame)
-        format_frame.grid(row=14, column=0, columnspan=3, sticky=tk.W, pady=1)
+        format_frame.grid(row=15, column=0, columnspan=3, sticky=tk.W, pady=1)
         ttk.Radiobutton(format_frame, text="十六进制", variable=self.data_format_var, value="HEX").grid(row=0, column=0, padx=(0, 20))
         ttk.Radiobutton(format_frame, text="十进制", variable=self.data_format_var, value="DEC").grid(row=0, column=1)
         
         # 控制按钮
         button_frame = ttk.Frame(settings_frame)
-        button_frame.grid(row=15, column=0, columnspan=3, pady=10)
+        button_frame.grid(row=16, column=0, columnspan=3, pady=10)
         
-        ttk.Button(button_frame, text="打开串口", command=self.open_serial, style="Accent.TButton").grid(row=0, column=0, padx=2)
-        ttk.Button(button_frame, text="关闭串口", command=self.close_serial).grid(row=0, column=1, padx=2)
-        
-        ttk.Button(button_frame, text="发送", command=self.send_modbus, style="Accent.TButton").grid(row=1, column=0, padx=2, pady=5)
-        ttk.Button(button_frame, text="清空", command=self.clear_data).grid(row=1, column=1, padx=2, pady=5)
+        ttk.Button(button_frame, text="发送", command=self.send_modbus, style="Accent.TButton").grid(row=0, column=0, padx=2)
+        ttk.Button(button_frame, text="清空", command=self.clear_data).grid(row=0, column=1, padx=2)
+        ttk.Button(button_frame, text="开始扫描", command=self.start_scan, style="Accent.TButton").grid(row=1, column=0, padx=2, pady=5)
+        ttk.Button(button_frame, text="停止扫描", command=self.stop_scan).grid(row=1, column=1, padx=2, pady=5)
         
         # 分隔线
         separator3 = ttk.Separator(settings_frame, orient='horizontal')
-        separator3.grid(row=16, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
+        separator3.grid(row=17, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
         
         # CRC测试区域
-        ttk.Label(settings_frame, text="CRC测试:", font=("Arial", 10, "bold")).grid(row=17, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
+        ttk.Label(settings_frame, text="CRC测试:", font=("Arial", 10, "bold")).grid(row=18, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
         
-        ttk.Label(settings_frame, text="数据(HEX):").grid(row=18, column=0, sticky=tk.W, pady=2)
+        ttk.Label(settings_frame, text="数据(HEX):").grid(row=19, column=0, sticky=tk.W, pady=2)
         self.crc_test_data_var = tk.StringVar(value="01 03 00 01 00 01")
         crc_test_entry = ttk.Entry(settings_frame, textvariable=self.crc_test_data_var, width=30)
-        crc_test_entry.grid(row=18, column=1, sticky=tk.W, pady=2)
+        crc_test_entry.grid(row=19, column=1, sticky=tk.W, pady=2)
         
         crc_test_button_frame = ttk.Frame(settings_frame)
-        crc_test_button_frame.grid(row=19, column=0, columnspan=3, pady=5)
+        crc_test_button_frame.grid(row=20, column=0, columnspan=3, pady=5)
         
         ttk.Button(crc_test_button_frame, text="计算CRC", command=self.calculate_crc_test).grid(row=0, column=0, padx=2)
         ttk.Button(crc_test_button_frame, text="验证CRC", command=self.verify_crc_test).grid(row=0, column=1, padx=2)
@@ -343,14 +365,69 @@ class ModernUI:
             port = self.com_port_var.get()
             baud = int(self.baud_rate_var.get())
             self.add_raw_data(f"[{self.get_timestamp()}] 串口 {port} 已打开，波特率: {baud}")
+            # 更新串口状态和按钮文本
+            self.serial_status = True
+            self.serial_button.config(text="关闭", style="TButton")
         except Exception as e:
             messagebox.showerror("错误", f"打开串口失败: {str(e)}")
+            
+    def toggle_serial(self):
+        """串口开关切换"""
+        if not self.serial_status:
+            # 当前串口关闭，执行打开操作
+            self.open_serial()
+        else:
+            # 当前串口打开，执行关闭操作
+            self.close_serial()
+            
+    def start_scan(self):
+        """开始定时扫描"""
+        if not self.serial_status:
+            messagebox.showwarning("警告", "请先打开串口")
+            return
+            
+        try:
+            scan_rate = int(self.scan_rate_var.get())
+            if scan_rate < 100:
+                messagebox.showwarning("警告", "扫描间隔不能小于100ms")
+                return
+                
+            self.scanning = True
+            self.scan_timer = self.root.after(scan_rate, self.scan_modbus)
+            self.add_raw_data(f"[{self.get_timestamp()}] 开始定时扫描，间隔: {scan_rate}ms")
+        except ValueError:
+            messagebox.showerror("错误", "请输入有效的扫描间隔")
+            
+    def stop_scan(self):
+        """停止定时扫描"""
+        if self.scan_timer:
+            self.root.after_cancel(self.scan_timer)
+            self.scan_timer = None
+        self.scanning = False
+        self.add_raw_data(f"[{self.get_timestamp()}] 停止定时扫描")
+        
+    def scan_modbus(self):
+        """执行一次Modbus扫描"""
+        if self.scanning and self.serial_status:
+            # 执行一次Modbus通讯
+            self.send_modbus()
+            
+            # 设置下一次扫描
+            try:
+                scan_rate = int(self.scan_rate_var.get())
+                self.scan_timer = self.root.after(scan_rate, self.scan_modbus)
+            except ValueError:
+                self.stop_scan()
+                messagebox.showerror("错误", "扫描间隔设置无效，已停止扫描")
             
     def close_serial(self):
         """关闭串口"""
         try:
             # 这里应该实现实际的串口关闭逻辑
             self.add_raw_data(f"[{self.get_timestamp()}] 串口已关闭")
+            # 更新串口状态和按钮文本
+            self.serial_status = False
+            self.serial_button.config(text="打开", style="Accent.TButton")
         except Exception as e:
             messagebox.showerror("错误", f"关闭串口失败: {str(e)}")
             
