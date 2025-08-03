@@ -169,21 +169,48 @@ class ModernUI:
         
         # 从站地址
         ttk.Label(settings_frame, text="从站地址:").grid(row=8, column=0, sticky=tk.W, pady=2)
+        slave_address_frame = ttk.Frame(settings_frame)
+        slave_address_frame.grid(row=8, column=1, sticky=tk.W, pady=2)
+        
         self.slave_address_var = tk.StringVar(value="1")
-        slave_address_entry = ttk.Entry(settings_frame, textvariable=self.slave_address_var, width=10)
-        slave_address_entry.grid(row=8, column=1, sticky=tk.W, pady=2)
+        slave_address_entry = ttk.Entry(slave_address_frame, textvariable=self.slave_address_var, width=8)
+        slave_address_entry.grid(row=0, column=0, padx=(0, 2))
+        
+        self.slave_address_base_var = tk.StringVar(value="DEC")
+        slave_address_base_combo = ttk.Combobox(slave_address_frame, textvariable=self.slave_address_base_var,
+                                               values=["DEC", "HEX"], width=4, state="readonly")
+        slave_address_base_combo.grid(row=0, column=1)
+        slave_address_base_combo.bind('<<ComboboxSelected>>', self.on_slave_address_base_change)
         
         # 寄存器地址
         ttk.Label(settings_frame, text="寄存器地址:").grid(row=9, column=0, sticky=tk.W, pady=2)
+        register_address_frame = ttk.Frame(settings_frame)
+        register_address_frame.grid(row=9, column=1, sticky=tk.W, pady=2)
+        
         self.register_address_var = tk.StringVar(value="0")
-        register_address_entry = ttk.Entry(settings_frame, textvariable=self.register_address_var, width=10)
-        register_address_entry.grid(row=9, column=1, sticky=tk.W, pady=2)
+        register_address_entry = ttk.Entry(register_address_frame, textvariable=self.register_address_var, width=8)
+        register_address_entry.grid(row=0, column=0, padx=(0, 2))
+        
+        self.register_address_base_var = tk.StringVar(value="DEC")
+        register_address_base_combo = ttk.Combobox(register_address_frame, textvariable=self.register_address_base_var,
+                                                  values=["DEC", "HEX"], width=4, state="readonly")
+        register_address_base_combo.grid(row=0, column=1)
+        register_address_base_combo.bind('<<ComboboxSelected>>', self.on_register_address_base_change)
         
         # 寄存器数量
         ttk.Label(settings_frame, text="寄存器数量:").grid(row=10, column=0, sticky=tk.W, pady=2)
+        register_count_frame = ttk.Frame(settings_frame)
+        register_count_frame.grid(row=10, column=1, sticky=tk.W, pady=2)
+        
         self.register_count_var = tk.StringVar(value="1")
-        register_count_entry = ttk.Entry(settings_frame, textvariable=self.register_count_var, width=10)
-        register_count_entry.grid(row=10, column=1, sticky=tk.W, pady=2)
+        register_count_entry = ttk.Entry(register_count_frame, textvariable=self.register_count_var, width=8)
+        register_count_entry.grid(row=0, column=0, padx=(0, 2))
+        
+        self.register_count_base_var = tk.StringVar(value="DEC")
+        register_count_base_combo = ttk.Combobox(register_count_frame, textvariable=self.register_count_base_var,
+                                                values=["DEC", "HEX"], width=4, state="readonly")
+        register_count_base_combo.grid(row=0, column=1)
+        register_count_base_combo.bind('<<ComboboxSelected>>', self.on_register_count_base_change)
         
         # 分隔线
         separator2 = ttk.Separator(settings_frame, orient='horizontal')
@@ -325,9 +352,36 @@ class ModernUI:
         try:
             # 获取设置参数
             function_code = self.function_code_var.get().split(" - ")[0]
-            slave_addr = int(self.slave_address_var.get())
-            reg_addr = int(self.register_address_var.get())
-            reg_count = int(self.register_count_var.get())
+            
+            # 解析从站地址（支持十进制和十六进制）
+            slave_addr_str = self.slave_address_var.get().strip()
+            if self.slave_address_base_var.get() == "HEX":
+                if slave_addr_str.upper().startswith('0X'):
+                    slave_addr = int(slave_addr_str, 16)
+                else:
+                    slave_addr = int(slave_addr_str, 16)
+            else:
+                slave_addr = int(slave_addr_str)
+                
+            # 解析寄存器地址（支持十进制和十六进制）
+            reg_addr_str = self.register_address_var.get().strip()
+            if self.register_address_base_var.get() == "HEX":
+                if reg_addr_str.upper().startswith('0X'):
+                    reg_addr = int(reg_addr_str, 16)
+                else:
+                    reg_addr = int(reg_addr_str, 16)
+            else:
+                reg_addr = int(reg_addr_str)
+                
+            # 解析寄存器数量（支持十进制和十六进制）
+            reg_count_str = self.register_count_var.get().strip()
+            if self.register_count_base_var.get() == "HEX":
+                if reg_count_str.upper().startswith('0X'):
+                    reg_count = int(reg_count_str, 16)
+                else:
+                    reg_count = int(reg_count_str, 16)
+            else:
+                reg_count = int(reg_count_str)
             
             # 构建Modbus请求帧
             if function_code in ["01", "02", "03", "04"]:
@@ -495,6 +549,96 @@ class ModernUI:
                 
         except Exception as e:
             messagebox.showerror("错误", f"CRC验证失败: {str(e)}")
+        
+    def on_slave_address_base_change(self, event=None):
+        """从站地址进制改变事件"""
+        try:
+            current_value = self.slave_address_var.get().strip()
+            if not current_value:
+                return
+                
+            current_base = self.slave_address_base_var.get()
+            
+            if current_base == "DEC":
+                # 当前是十进制，转换为十进制显示
+                try:
+                    # 尝试解析为十六进制
+                    if current_value.upper().startswith('0X'):
+                        value = int(current_value, 16)
+                    else:
+                        value = int(current_value, 16)
+                    self.slave_address_var.set(str(value))
+                except ValueError:
+                    pass
+            else:
+                # 当前是十六进制，转换为十六进制显示
+                try:
+                    value = int(current_value)
+                    self.slave_address_var.set(f"{value:02X}")
+                except ValueError:
+                    pass
+        except Exception as e:
+            pass
+            
+    def on_register_address_base_change(self, event=None):
+        """寄存器地址进制改变事件"""
+        try:
+            current_value = self.register_address_var.get().strip()
+            if not current_value:
+                return
+                
+            current_base = self.register_address_base_var.get()
+            
+            if current_base == "DEC":
+                # 当前是十进制，转换为十进制显示
+                try:
+                    # 尝试解析为十六进制
+                    if current_value.upper().startswith('0X'):
+                        value = int(current_value, 16)
+                    else:
+                        value = int(current_value, 16)
+                    self.register_address_var.set(str(value))
+                except ValueError:
+                    pass
+            else:
+                # 当前是十六进制，转换为十六进制显示
+                try:
+                    value = int(current_value)
+                    self.register_address_var.set(f"{value:04X}")
+                except ValueError:
+                    pass
+        except Exception as e:
+            pass
+            
+    def on_register_count_base_change(self, event=None):
+        """寄存器数量进制改变事件"""
+        try:
+            current_value = self.register_count_var.get().strip()
+            if not current_value:
+                return
+                
+            current_base = self.register_count_base_var.get()
+            
+            if current_base == "DEC":
+                # 当前是十进制，转换为十进制显示
+                try:
+                    # 尝试解析为十六进制
+                    if current_value.upper().startswith('0X'):
+                        value = int(current_value, 16)
+                    else:
+                        value = int(current_value, 16)
+                    self.register_count_var.set(str(value))
+                except ValueError:
+                    pass
+            else:
+                # 当前是十六进制，转换为十六进制显示
+                try:
+                    value = int(current_value)
+                    self.register_count_var.set(f"{value:04X}")
+                except ValueError:
+                    pass
+        except Exception as e:
+            pass
         
     def verify_crc(self, data):
         """验证CRC校验码"""
