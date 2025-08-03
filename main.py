@@ -424,10 +424,12 @@ class ModbusParserWindow:
         # 注释数据存储
         self.annotations = {}
         self.annotation_file = "modbus_annotations.json"
-        self.load_annotations()
         
         # 创建界面
         self.create_interface()
+        
+        # 加载注释（在界面创建之后）
+        self.load_annotations()
         
         # 设置窗口关闭事件
         self.window.protocol("WM_DELETE_WINDOW", self.on_closing)
