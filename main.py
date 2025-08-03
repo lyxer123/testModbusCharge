@@ -26,9 +26,9 @@ class ModernUI:
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
         
-        # 设置合适的窗口大小（宽度为屏幕的70%，高度为屏幕的80%）
-        window_width = int(screen_width * 0.7)
-        window_height = int(screen_height * 0.8)
+        # 计算窗口大小为屏幕的一半
+        window_width = screen_width // 2
+        window_height = screen_height // 2
         
         # 计算窗口位置（居中）
         x = (screen_width - window_width) // 2
@@ -146,40 +146,40 @@ class ModernUI:
         data_bits_combo.grid(row=2, column=1, sticky=tk.W, pady=2)
         
         # 停止位设置
-        ttk.Label(settings_frame, text="停止位:").grid(row=3, column=0, sticky=tk.W, pady=2)
+        ttk.Label(settings_frame, text="停止位:").grid(row=4, column=0, sticky=tk.W, pady=2)
         self.stop_bits_var = tk.StringVar(value="1")
         stop_bits_combo = ttk.Combobox(settings_frame, textvariable=self.stop_bits_var,
                                       values=["1", "1.5", "2"], width=10, state="readonly")
-        stop_bits_combo.grid(row=3, column=1, sticky=tk.W, pady=2)
+        stop_bits_combo.grid(row=4, column=1, sticky=tk.W, pady=2)
         
         # 校验位设置
-        ttk.Label(settings_frame, text="校验位:").grid(row=4, column=0, sticky=tk.W, pady=2)
+        ttk.Label(settings_frame, text="校验位:").grid(row=5, column=0, sticky=tk.W, pady=2)
         self.parity_var = tk.StringVar(value="无")
         parity_combo = ttk.Combobox(settings_frame, textvariable=self.parity_var,
                                    values=["无", "奇校验", "偶校验"], width=10, state="readonly")
-        parity_combo.grid(row=4, column=1, sticky=tk.W, pady=2)
+        parity_combo.grid(row=5, column=1, sticky=tk.W, pady=2)
         
         # 分隔线
         separator1 = ttk.Separator(settings_frame, orient='horizontal')
-        separator1.grid(row=5, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=10)
+        separator1.grid(row=6, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
         
         # Modbus功能设置
-        ttk.Label(settings_frame, text="Modbus功能:", font=("Arial", 10, "bold")).grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(0, 5))
+        ttk.Label(settings_frame, text="Modbus功能:", font=("Arial", 10, "bold")).grid(row=7, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
+        
+        # 从站地址
+        ttk.Label(settings_frame, text="从站地址:").grid(row=8, column=0, sticky=tk.W, pady=2)
+        slave_address_frame = ttk.Frame(settings_frame)
+        slave_address_frame.grid(row=8, column=1, sticky=tk.W, pady=2)
         
         # 功能码选择
-        ttk.Label(settings_frame, text="功能码:").grid(row=7, column=0, sticky=tk.W, pady=2)
+        ttk.Label(settings_frame, text="功能码:").grid(row=9, column=0, sticky=tk.W, pady=2)
         self.function_code_var = tk.StringVar(value="03 - 读保持寄存器")
         function_code_combo = ttk.Combobox(settings_frame, textvariable=self.function_code_var,
                                           values=["01 - 读线圈状态", "02 - 读离散输入", "03 - 读保持寄存器", 
                                                  "04 - 读输入寄存器", "05 - 写单个线圈", "06 - 写单个寄存器",
                                                  "15 - 写多个线圈", "16 - 写多个寄存器"], 
                                           width=15, state="readonly")
-        function_code_combo.grid(row=7, column=1, sticky=tk.W, pady=2)
-        
-        # 从站地址
-        ttk.Label(settings_frame, text="从站地址:").grid(row=8, column=0, sticky=tk.W, pady=2)
-        slave_address_frame = ttk.Frame(settings_frame)
-        slave_address_frame.grid(row=8, column=1, sticky=tk.W, pady=2)
+        function_code_combo.grid(row=9, column=1, sticky=tk.W, pady=2)
         
         self.slave_address_var = tk.StringVar(value="1")
         slave_address_entry = ttk.Entry(slave_address_frame, textvariable=self.slave_address_var, width=8)
@@ -192,9 +192,9 @@ class ModernUI:
         slave_address_base_combo.bind('<<ComboboxSelected>>', self.on_slave_address_base_change)
         
         # 寄存器地址
-        ttk.Label(settings_frame, text="寄存器地址:").grid(row=9, column=0, sticky=tk.W, pady=2)
+        ttk.Label(settings_frame, text="寄存器地址:").grid(row=10, column=0, sticky=tk.W, pady=2)
         register_address_frame = ttk.Frame(settings_frame)
-        register_address_frame.grid(row=9, column=1, sticky=tk.W, pady=2)
+        register_address_frame.grid(row=10, column=1, sticky=tk.W, pady=2)
         
         self.register_address_var = tk.StringVar(value="0")
         register_address_entry = ttk.Entry(register_address_frame, textvariable=self.register_address_var, width=8)
@@ -207,9 +207,9 @@ class ModernUI:
         register_address_base_combo.bind('<<ComboboxSelected>>', self.on_register_address_base_change)
         
         # 寄存器数量
-        ttk.Label(settings_frame, text="寄存器数量:").grid(row=10, column=0, sticky=tk.W, pady=2)
+        ttk.Label(settings_frame, text="寄存器数量:").grid(row=11, column=0, sticky=tk.W, pady=2)
         register_count_frame = ttk.Frame(settings_frame)
-        register_count_frame.grid(row=10, column=1, sticky=tk.W, pady=2)
+        register_count_frame.grid(row=11, column=1, sticky=tk.W, pady=2)
         
         self.register_count_var = tk.StringVar(value="1")
         register_count_entry = ttk.Entry(register_count_frame, textvariable=self.register_count_var, width=8)
@@ -223,19 +223,21 @@ class ModernUI:
         
         # 分隔线
         separator2 = ttk.Separator(settings_frame, orient='horizontal')
-        separator2.grid(row=11, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=10)
+        separator2.grid(row=12, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
         
         # 数据显示设置
-        ttk.Label(settings_frame, text="显示设置:", font=("Arial", 10, "bold")).grid(row=12, column=0, columnspan=2, sticky=tk.W, pady=(0, 5))
+        ttk.Label(settings_frame, text="显示设置:", font=("Arial", 10, "bold")).grid(row=13, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
         
         # 数据显示格式
         self.data_format_var = tk.StringVar(value="HEX")
-        ttk.Radiobutton(settings_frame, text="十六进制", variable=self.data_format_var, value="HEX").grid(row=13, column=0, columnspan=2, sticky=tk.W, pady=1)
-        ttk.Radiobutton(settings_frame, text="十进制", variable=self.data_format_var, value="DEC").grid(row=14, column=0, columnspan=2, sticky=tk.W, pady=1)
+        format_frame = ttk.Frame(settings_frame)
+        format_frame.grid(row=14, column=0, columnspan=3, sticky=tk.W, pady=1)
+        ttk.Radiobutton(format_frame, text="十六进制", variable=self.data_format_var, value="HEX").grid(row=0, column=0, padx=(0, 20))
+        ttk.Radiobutton(format_frame, text="十进制", variable=self.data_format_var, value="DEC").grid(row=0, column=1)
         
         # 控制按钮
         button_frame = ttk.Frame(settings_frame)
-        button_frame.grid(row=15, column=0, columnspan=2, pady=10)
+        button_frame.grid(row=15, column=0, columnspan=3, pady=10)
         
         ttk.Button(button_frame, text="打开串口", command=self.open_serial, style="Accent.TButton").grid(row=0, column=0, padx=2)
         ttk.Button(button_frame, text="关闭串口", command=self.close_serial).grid(row=0, column=1, padx=2)
@@ -245,10 +247,10 @@ class ModernUI:
         
         # 分隔线
         separator3 = ttk.Separator(settings_frame, orient='horizontal')
-        separator3.grid(row=16, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=10)
+        separator3.grid(row=16, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
         
         # CRC测试区域
-        ttk.Label(settings_frame, text="CRC测试:", font=("Arial", 10, "bold")).grid(row=17, column=0, columnspan=2, sticky=tk.W, pady=(0, 5))
+        ttk.Label(settings_frame, text="CRC测试:", font=("Arial", 10, "bold")).grid(row=17, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
         
         ttk.Label(settings_frame, text="数据(HEX):").grid(row=18, column=0, sticky=tk.W, pady=2)
         self.crc_test_data_var = tk.StringVar(value="01 03 00 01 00 01")
@@ -256,7 +258,7 @@ class ModernUI:
         crc_test_entry.grid(row=18, column=1, sticky=tk.W, pady=2)
         
         crc_test_button_frame = ttk.Frame(settings_frame)
-        crc_test_button_frame.grid(row=19, column=0, columnspan=2, pady=5)
+        crc_test_button_frame.grid(row=19, column=0, columnspan=3, pady=5)
         
         ttk.Button(crc_test_button_frame, text="计算CRC", command=self.calculate_crc_test).grid(row=0, column=0, padx=2)
         ttk.Button(crc_test_button_frame, text="验证CRC", command=self.verify_crc_test).grid(row=0, column=1, padx=2)
@@ -827,6 +829,10 @@ class ModbusParserWindow:
         
     def create_interface(self):
         """创建解析界面"""
+        # 状态栏变量初始化
+        self.status_var = tk.StringVar()
+        self.status_var.set("就绪")
+        
         # 主框架
         main_frame = ttk.Frame(self.window, padding="10")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
@@ -835,7 +841,7 @@ class ModbusParserWindow:
         self.window.columnconfigure(0, weight=1)
         self.window.rowconfigure(0, weight=1)
         main_frame.columnconfigure(1, weight=1)
-        main_frame.rowconfigure(0, weight=1)
+        main_frame.rowconfigure(1, weight=1)
         
         # 创建Tab控件
         self.notebook = ttk.Notebook(main_frame)
@@ -845,6 +851,11 @@ class ModbusParserWindow:
         self.function_code_frame = ttk.Frame(self.notebook, padding="10")
         self.notebook.add(self.function_code_frame, text="功能码解析")
         self.create_function_code_parser()
+        
+        # 状态栏
+        status_bar = ttk.Label(main_frame, textvariable=self.status_var, 
+                              relief=tk.SUNKEN, anchor=tk.W)
+        status_bar.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
         
     def create_function_code_parser(self):
         """创建功能码解析界面"""
@@ -934,6 +945,7 @@ class ModbusParserWindow:
     def on_function_code_change(self, event=None):
         """功能码改变事件"""
         function_code = self.function_code_var.get()
+        self.status_var.set(f"当前功能码: {function_code}")
         
         # 根据功能码设置默认数据
         default_data = {
@@ -970,8 +982,11 @@ class ModbusParserWindow:
             self.result_text.delete(1.0, tk.END)
             self.result_text.insert(tk.END, result)
             
+            self.status_var.set(f"数据解析完成 - 功能码: {function_code}")
+            
         except Exception as e:
             messagebox.showerror("解析错误", str(e))
+            self.status_var.set("数据解析失败")
             
     def parse_modbus_data(self, function_code, data_str):
         """解析Modbus数据"""
@@ -1210,6 +1225,7 @@ class ModbusParserWindow:
             import json
             with open(self.annotation_file, 'w', encoding='utf-8') as f:
                 json.dump(self.annotations, f, ensure_ascii=False, indent=2)
+            self.status_var.set("注释已保存")
             messagebox.showinfo("成功", "注释已保存到文件")
         except Exception as e:
             messagebox.showerror("错误", f"保存注释失败: {str(e)}")
@@ -1222,11 +1238,16 @@ class ModbusParserWindow:
             if os.path.exists(self.annotation_file):
                 with open(self.annotation_file, 'r', encoding='utf-8') as f:
                     self.annotations = json.load(f)
+                if hasattr(self, 'status_var'):
+                    self.status_var.set("注释已加载")
             else:
                 self.annotations = {}
+                if hasattr(self, 'status_var'):
+                    self.status_var.set("注释文件不存在，已创建新的注释字典")
         except Exception as e:
             self.annotations = {}
-            messagebox.showerror("错误", f"加载注释失败: {str(e)}")
+            if hasattr(self, 'status_var'):
+                messagebox.showerror("错误", f"加载注释失败: {str(e)}")
             
     def export_annotations(self):
         """导出注释为文本文件"""
@@ -1243,6 +1264,7 @@ class ModbusParserWindow:
                 for key, value in self.annotations.items():
                     f.write(f"{key}: {value}\n")
                     
+            self.status_var.set(f"注释已导出到 {filename}")
             messagebox.showinfo("成功", f"注释已导出到文件: {filename}")
         except Exception as e:
             messagebox.showerror("错误", f"导出注释失败: {str(e)}")
@@ -1251,6 +1273,7 @@ class ModbusParserWindow:
         """清空注释"""
         if messagebox.askyesno("确认", "确定要清空所有注释吗？"):
             self.annotations = {}
+            self.status_var.set("注释已清空")
             
     def add_annotation(self):
         """添加或更新注释"""
@@ -1262,6 +1285,7 @@ class ModbusParserWindow:
             return
             
         self.annotations[key] = value
+        self.status_var.set(f"注释已添加/更新: {key}")
         
         # 清空输入框
         self.annotation_key_var.set("")
@@ -1273,6 +1297,7 @@ class ModbusParserWindow:
         if key in self.annotations:
             if messagebox.askyesno("确认", f"确定要删除注释 '{key}' 吗？"):
                 del self.annotations[key]
+                self.status_var.set(f"注释已删除: {key}")
                 # 清空输入框
                 self.annotation_key_var.set("")
                 self.annotation_value_var.set("")
@@ -1284,6 +1309,7 @@ class ModbusParserWindow:
         key = self.annotation_key_var.get().strip()
         if key in self.annotations:
             self.annotation_value_var.set(self.annotations[key])
+            self.status_var.set(f"找到注释: {key}")
         else:
             messagebox.showwarning("警告", f"注释 '{key}' 不存在")
             
