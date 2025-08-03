@@ -116,7 +116,7 @@ class ModernUI:
         
         self.com_port_var = tk.StringVar()
         self.com_port_combo = ttk.Combobox(com_port_frame, textvariable=self.com_port_var, 
-                                          width=12, state="readonly")
+                                          width=10, state="readonly")
         self.com_port_combo.grid(row=0, column=0, padx=(0, 2))
         
         ttk.Button(com_port_frame, text="刷新", command=self.refresh_com_ports, width=6).grid(row=0, column=1, padx=(2, 0))
@@ -229,8 +229,8 @@ class ModernUI:
         register_count_base_combo.grid(row=0, column=1)
         register_count_base_combo.bind('<<ComboboxSelected>>', self.on_register_count_base_change)
         
-        # Scan Rate设置
-        ttk.Label(settings_frame, text="Scan Rate:").grid(row=12, column=0, sticky=tk.W, pady=2)
+        # 扫描设置
+        ttk.Label(settings_frame, text="扫描:").grid(row=12, column=0, sticky=tk.W, pady=2)
         scan_rate_frame = ttk.Frame(settings_frame)
         scan_rate_frame.grid(row=12, column=1, sticky=tk.W, pady=2)
         
@@ -239,6 +239,10 @@ class ModernUI:
         scan_rate_entry.grid(row=0, column=0, padx=(0, 5))
         
         ttk.Label(scan_rate_frame, text="ms").grid(row=0, column=1)
+        
+        # 扫描按钮
+        self.scan_button = ttk.Button(scan_rate_frame, text="开始", command=self.toggle_scan, style="Accent.TButton", width=6)
+        self.scan_button.grid(row=0, column=2, padx=(10, 0))
         
         # 定时器状态
         self.scan_timer = None
@@ -264,26 +268,12 @@ class ModernUI:
         
         ttk.Button(button_frame, text="发送", command=self.send_modbus, style="Accent.TButton").grid(row=0, column=0, padx=2)
         ttk.Button(button_frame, text="清空", command=self.clear_data).grid(row=0, column=1, padx=2)
-        ttk.Button(button_frame, text="开始扫描", command=self.start_scan, style="Accent.TButton").grid(row=1, column=0, padx=2, pady=5)
-        ttk.Button(button_frame, text="停止扫描", command=self.stop_scan).grid(row=1, column=1, padx=2, pady=5)
         
         # 分隔线
         separator3 = ttk.Separator(settings_frame, orient='horizontal')
         separator3.grid(row=17, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
         
-        # CRC测试区域
-        ttk.Label(settings_frame, text="CRC测试:", font=("Arial", 10, "bold")).grid(row=18, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
-        
-        ttk.Label(settings_frame, text="数据(HEX):").grid(row=19, column=0, sticky=tk.W, pady=2)
-        self.crc_test_data_var = tk.StringVar(value="01 03 00 01 00 01")
-        crc_test_entry = ttk.Entry(settings_frame, textvariable=self.crc_test_data_var, width=30)
-        crc_test_entry.grid(row=19, column=1, sticky=tk.W, pady=2)
-        
-        crc_test_button_frame = ttk.Frame(settings_frame)
-        crc_test_button_frame.grid(row=20, column=0, columnspan=3, pady=5)
-        
-        ttk.Button(crc_test_button_frame, text="计算CRC", command=self.calculate_crc_test).grid(row=0, column=0, padx=2)
-        ttk.Button(crc_test_button_frame, text="验证CRC", command=self.verify_crc_test).grid(row=0, column=1, padx=2)
+
         
     def create_modbus_data_area(self):
         """创建右侧数据显示区域"""
@@ -380,6 +370,15 @@ class ModernUI:
             # 当前串口打开，执行关闭操作
             self.close_serial()
             
+    def toggle_scan(self):
+        """扫描开关切换"""
+        if not self.scanning:
+            # 当前扫描停止，执行开始扫描操作
+            self.start_scan()
+        else:
+            # 当前扫描进行中，执行停止扫描操作
+            self.stop_scan()
+            
     def start_scan(self):
         """开始定时扫描"""
         if not self.serial_status:
@@ -394,6 +393,7 @@ class ModernUI:
                 
             self.scanning = True
             self.scan_timer = self.root.after(scan_rate, self.scan_modbus)
+            self.scan_button.config(text="停止", style="TButton")
             self.add_raw_data(f"[{self.get_timestamp()}] 开始定时扫描，间隔: {scan_rate}ms")
         except ValueError:
             messagebox.showerror("错误", "请输入有效的扫描间隔")
@@ -404,6 +404,7 @@ class ModernUI:
             self.root.after_cancel(self.scan_timer)
             self.scan_timer = None
         self.scanning = False
+        self.scan_button.config(text="开始", style="Accent.TButton")
         self.add_raw_data(f"[{self.get_timestamp()}] 停止定时扫描")
         
     def scan_modbus(self):
@@ -485,8 +486,7 @@ class ModernUI:
                 request_hex = " ".join([f"{b:02X}" for b in request_data])
                 
                 self.add_raw_data(f"[{self.get_timestamp()}] 发送: {request_hex}")
-                self.add_decode_data(f"[{self.get_timestamp()}] 发送Modbus请求: 从站{slave_addr}, 功能码{function_code}, 地址{reg_addr}, 数量{reg_count}")
-                self.add_decode_data(f"[{self.get_timestamp()}] CRC校验: {crc:04X} (低字节: {crc_low:02X}, 高字节: {crc_high:02X})")
+                self.add_decode_data(f"[{self.get_timestamp()}] 发送: 从站{slave_addr}, 功能码{function_code}, 地址{reg_addr}, 数量{reg_count} - CRC:低{crc_low:02X},高{crc_high:02X}")
                 
                 # 模拟接收响应
                 self.simulate_response(slave_addr, function_code, reg_count)
@@ -553,86 +553,19 @@ class ModernUI:
         response_hex = " ".join([f"{b:02X}" for b in response_data])
         
         self.add_raw_data(f"[{self.get_timestamp()}] 接收: {response_hex}")
-        self.add_decode_data(f"[{self.get_timestamp()}] 接收Modbus响应: 从站{slave_addr}, 功能码{function_code}, 数据长度{data_bytes}字节")
-        self.add_decode_data(f"[{self.get_timestamp()}] CRC校验: {crc:04X} (低字节: {crc_low:02X}, 高字节: {crc_high:02X})")
         
-        # 验证CRC
-        self.verify_crc(response_data)
+        # 验证CRC并合并显示
+        crc_result = self.verify_crc_silent(response_data)
+        if crc_result:
+            self.add_decode_data(f"[{self.get_timestamp()}] 响应: 从站{slave_addr}, 功能码{function_code}, 数据{data_bytes}字节 - CRC:低{crc_low:02X},高{crc_high:02X} - 成功")
+        else:
+            # 获取接收到的CRC值用于错误显示
+            received_crc_low = response_data[-2]
+            received_crc_high = response_data[-1]
+            received_crc = (received_crc_high << 8) | received_crc_low
+            self.add_decode_data(f"[{self.get_timestamp()}] 响应: 从站{slave_addr}, 功能码{function_code}, 数据{data_bytes}字节 - CRC:低{crc_low:02X},高{crc_high:02X} - CRC错误({received_crc:04X})")
         
-    def calculate_crc_test(self):
-        """计算CRC测试"""
-        try:
-            data_str = self.crc_test_data_var.get().strip()
-            # 清理数据字符串
-            data_str = data_str.replace(" ", "").replace(",", "").replace(";", "")
-            
-            # 验证数据格式
-            if not all(c in '0123456789ABCDEFabcdef' for c in data_str):
-                raise ValueError("数据格式错误，请输入有效的十六进制数据")
-            
-            # 将十六进制字符串转换为字节列表
-            data_bytes = []
-            for i in range(0, len(data_str), 2):
-                if i + 1 < len(data_str):
-                    data_bytes.append(int(data_str[i:i+2], 16))
-            
-            # 计算CRC
-            crc = self.calculate_crc16(data_bytes)
-            crc_low = crc & 0xFF
-            crc_high = (crc >> 8) & 0xFF
-            
-            # 添加CRC到数据
-            data_with_crc = data_bytes + [crc_low, crc_high]
-            
-            # 显示结果
-            original_hex = " ".join([f"{b:02X}" for b in data_bytes])
-            crc_hex = " ".join([f"{b:02X}" for b in data_with_crc])
-            
-            self.add_raw_data(f"[{self.get_timestamp()}] CRC计算测试:")
-            self.add_raw_data(f"[{self.get_timestamp()}] 原始数据: {original_hex}")
-            self.add_raw_data(f"[{self.get_timestamp()}] CRC值: {crc:04X} (低字节: {crc_low:02X}, 高字节: {crc_high:02X})")
-            self.add_raw_data(f"[{self.get_timestamp()}] 完整数据: {crc_hex}")
-            
-            self.add_decode_data(f"[{self.get_timestamp()}] CRC计算完成: {crc:04X}")
-            
-        except Exception as e:
-            messagebox.showerror("错误", f"CRC计算失败: {str(e)}")
-            
-    def verify_crc_test(self):
-        """验证CRC测试"""
-        try:
-            data_str = self.crc_test_data_var.get().strip()
-            # 清理数据字符串
-            data_str = data_str.replace(" ", "").replace(",", "").replace(";", "")
-            
-            # 验证数据格式
-            if not all(c in '0123456789ABCDEFabcdef' for c in data_str):
-                raise ValueError("数据格式错误，请输入有效的十六进制数据")
-            
-            # 将十六进制字符串转换为字节列表
-            data_bytes = []
-            for i in range(0, len(data_str), 2):
-                if i + 1 < len(data_str):
-                    data_bytes.append(int(data_str[i:i+2], 16))
-            
-            if len(data_bytes) < 3:
-                raise ValueError("数据长度不足，至少需要3个字节（包含CRC）")
-            
-            # 验证CRC
-            result = self.verify_crc(data_bytes)
-            
-            # 显示结果
-            data_hex = " ".join([f"{b:02X}" for b in data_bytes])
-            self.add_raw_data(f"[{self.get_timestamp()}] CRC验证测试:")
-            self.add_raw_data(f"[{self.get_timestamp()}] 数据: {data_hex}")
-            
-            if result:
-                self.add_decode_data(f"[{self.get_timestamp()}] CRC验证成功 ✓")
-            else:
-                self.add_decode_data(f"[{self.get_timestamp()}] CRC验证失败 ✗")
-                
-        except Exception as e:
-            messagebox.showerror("错误", f"CRC验证失败: {str(e)}")
+
         
     def on_slave_address_base_change(self, event=None):
         """从站地址进制改变事件"""
@@ -792,6 +725,22 @@ class ModernUI:
             # 更新图标状态 - 红色表示检测功能不可用
             self.com_status_label.config(fg="red")
             self.com_ports_info = f"串口检测功能不可用\n请手动选择串口号\n错误: {str(e)}"
+        
+    def verify_crc_silent(self, data):
+        """验证CRC校验码（静默模式，只返回结果）"""
+        if len(data) < 3:  # 至少需要从站地址、功能码和CRC（2字节）
+            return False
+            
+        # 提取数据部分（不包括CRC）
+        data_without_crc = data[:-2]
+        received_crc_low = data[-2]
+        received_crc_high = data[-1]
+        received_crc = (received_crc_high << 8) | received_crc_low
+        
+        # 计算数据部分的CRC
+        calculated_crc = self.calculate_crc16(data_without_crc)
+        
+        return calculated_crc == received_crc
         
     def verify_crc(self, data):
         """验证CRC校验码"""
@@ -1077,7 +1026,7 @@ class ModbusParserWindow:
                 data_bytes.append(int(data_str[i:i+2], 16))
         
         result.append(f"原始数据: {' '.join([f'{b:02X}' for b in data_bytes])}\n")
-        result.append(f"数据长度: {len(data_bytes)} 字节\n")
+        result.append(f"数据: {len(data_bytes)} 字节\n")
         
         # CRC校验
         if len(data_bytes) >= 3:  # 至少需要从站地址、功能码和CRC（2字节）
@@ -1138,7 +1087,7 @@ class ModbusParserWindow:
             
         # 第一个字节是数据长度
         data_length = data_bytes[0]
-        result.append(f"数据长度字节: {data_length:02X} ({data_length} 字节)\n")
+        result.append(f"数据字节: {data_length:02X} ({data_length} 字节)\n")
         
         # 解析每个字节的位
         for i in range(1, min(len(data_bytes), data_length + 1)):
@@ -1173,7 +1122,7 @@ class ModbusParserWindow:
             
         # 第一个字节是数据长度
         data_length = data_bytes[0]
-        result.append(f"数据长度字节: {data_length:02X} ({data_length} 字节)\n")
+        result.append(f"数据字节: {data_length:02X} ({data_length} 字节)\n")
         
         # 解析寄存器值（每个寄存器2字节）
         register_count = data_length // 2
