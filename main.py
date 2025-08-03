@@ -207,6 +207,24 @@ class ModernUI:
         ttk.Button(button_frame, text="发送", command=self.send_modbus, style="Accent.TButton").grid(row=1, column=0, padx=2, pady=5)
         ttk.Button(button_frame, text="清空", command=self.clear_data).grid(row=1, column=1, padx=2, pady=5)
         
+        # 分隔线
+        separator3 = ttk.Separator(settings_frame, orient='horizontal')
+        separator3.grid(row=16, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=10)
+        
+        # CRC测试区域
+        ttk.Label(settings_frame, text="CRC测试:", font=("Arial", 10, "bold")).grid(row=17, column=0, columnspan=2, sticky=tk.W, pady=(0, 5))
+        
+        ttk.Label(settings_frame, text="数据(HEX):").grid(row=18, column=0, sticky=tk.W, pady=2)
+        self.crc_test_data_var = tk.StringVar(value="01 03 00 01 00 01")
+        crc_test_entry = ttk.Entry(settings_frame, textvariable=self.crc_test_data_var, width=30)
+        crc_test_entry.grid(row=18, column=1, sticky=tk.W, pady=2)
+        
+        crc_test_button_frame = ttk.Frame(settings_frame)
+        crc_test_button_frame.grid(row=19, column=0, columnspan=2, pady=5)
+        
+        ttk.Button(crc_test_button_frame, text="计算CRC", command=self.calculate_crc_test).grid(row=0, column=0, padx=2)
+        ttk.Button(crc_test_button_frame, text="验证CRC", command=self.verify_crc_test).grid(row=0, column=1, padx=2)
+        
     def create_modbus_data_area(self):
         """创建右侧数据显示区域"""
         # 数据区域框架
@@ -311,15 +329,26 @@ class ModernUI:
             reg_addr = int(self.register_address_var.get())
             reg_count = int(self.register_count_var.get())
             
-            # 构建Modbus请求帧（简化版）
+            # 构建Modbus请求帧
             if function_code in ["01", "02", "03", "04"]:
                 # 读操作
-                request = f"{slave_addr:02X} {function_code} {reg_addr:04X} {reg_count:04X}"
-                crc = self.calculate_crc(request.replace(" ", ""))
-                full_request = f"{request} {crc:04X}"
+                # 构建数据包（不包含CRC）
+                request_data = [slave_addr, int(function_code), reg_addr >> 8, reg_addr & 0xFF, reg_count >> 8, reg_count & 0xFF]
                 
-                self.add_raw_data(f"[{self.get_timestamp()}] 发送: {full_request}")
+                # 计算CRC
+                crc = self.calculate_crc16(request_data)
+                crc_low = crc & 0xFF
+                crc_high = (crc >> 8) & 0xFF
+                
+                # 添加CRC到数据包
+                request_data.extend([crc_low, crc_high])
+                
+                # 转换为十六进制字符串显示
+                request_hex = " ".join([f"{b:02X}" for b in request_data])
+                
+                self.add_raw_data(f"[{self.get_timestamp()}] 发送: {request_hex}")
                 self.add_decode_data(f"[{self.get_timestamp()}] 发送Modbus请求: 从站{slave_addr}, 功能码{function_code}, 地址{reg_addr}, 数量{reg_count}")
+                self.add_decode_data(f"[{self.get_timestamp()}] CRC校验: {crc:04X} (低字节: {crc_low:02X}, 高字节: {crc_high:02X})")
                 
                 # 模拟接收响应
                 self.simulate_response(slave_addr, function_code, reg_count)
@@ -346,23 +375,170 @@ class ModernUI:
         if function_code in ["01", "02"]:
             # 线圈/离散输入
             data_bytes = reg_count
-            data = " ".join([f"{random.randint(0, 1):02X}" for _ in range(reg_count)])
+            # 生成随机线圈状态数据
+            coil_data = []
+            for _ in range(reg_count):
+                coil_data.append(random.randint(0, 1))
+            
+            # 构建响应数据包（不包含CRC）
+            response_data = [slave_addr, int(function_code), data_bytes]
+            
+            # 添加线圈数据
+            for coil in coil_data:
+                response_data.append(coil)
+                
         else:
             # 寄存器
             data_bytes = reg_count * 2
-            data = " ".join([f"{random.randint(0, 65535):04X}" for _ in range(reg_count)])
+            # 生成随机寄存器数据
+            register_data = []
+            for _ in range(reg_count):
+                register_value = random.randint(0, 65535)
+                register_data.append(register_value >> 8)  # 高字节
+                register_data.append(register_value & 0xFF)  # 低字节
             
-        response = f"{slave_addr:02X} {function_code} {data_bytes:02X} {data}"
-        crc = self.calculate_crc(response.replace(" ", ""))
-        full_response = f"{response} {crc:04X}"
+            # 构建响应数据包（不包含CRC）
+            response_data = [slave_addr, int(function_code), data_bytes]
+            
+            # 添加寄存器数据
+            response_data.extend(register_data)
         
-        self.add_raw_data(f"[{self.get_timestamp()}] 接收: {full_response}")
+        # 计算CRC
+        crc = self.calculate_crc16(response_data)
+        crc_low = crc & 0xFF
+        crc_high = (crc >> 8) & 0xFF
+        
+        # 添加CRC到响应数据包
+        response_data.extend([crc_low, crc_high])
+        
+        # 转换为十六进制字符串显示
+        response_hex = " ".join([f"{b:02X}" for b in response_data])
+        
+        self.add_raw_data(f"[{self.get_timestamp()}] 接收: {response_hex}")
         self.add_decode_data(f"[{self.get_timestamp()}] 接收Modbus响应: 从站{slave_addr}, 功能码{function_code}, 数据长度{data_bytes}字节")
+        self.add_decode_data(f"[{self.get_timestamp()}] CRC校验: {crc:04X} (低字节: {crc_low:02X}, 高字节: {crc_high:02X})")
         
+        # 验证CRC
+        self.verify_crc(response_data)
+        
+    def calculate_crc_test(self):
+        """计算CRC测试"""
+        try:
+            data_str = self.crc_test_data_var.get().strip()
+            # 清理数据字符串
+            data_str = data_str.replace(" ", "").replace(",", "").replace(";", "")
+            
+            # 验证数据格式
+            if not all(c in '0123456789ABCDEFabcdef' for c in data_str):
+                raise ValueError("数据格式错误，请输入有效的十六进制数据")
+            
+            # 将十六进制字符串转换为字节列表
+            data_bytes = []
+            for i in range(0, len(data_str), 2):
+                if i + 1 < len(data_str):
+                    data_bytes.append(int(data_str[i:i+2], 16))
+            
+            # 计算CRC
+            crc = self.calculate_crc16(data_bytes)
+            crc_low = crc & 0xFF
+            crc_high = (crc >> 8) & 0xFF
+            
+            # 添加CRC到数据
+            data_with_crc = data_bytes + [crc_low, crc_high]
+            
+            # 显示结果
+            original_hex = " ".join([f"{b:02X}" for b in data_bytes])
+            crc_hex = " ".join([f"{b:02X}" for b in data_with_crc])
+            
+            self.add_raw_data(f"[{self.get_timestamp()}] CRC计算测试:")
+            self.add_raw_data(f"[{self.get_timestamp()}] 原始数据: {original_hex}")
+            self.add_raw_data(f"[{self.get_timestamp()}] CRC值: {crc:04X} (低字节: {crc_low:02X}, 高字节: {crc_high:02X})")
+            self.add_raw_data(f"[{self.get_timestamp()}] 完整数据: {crc_hex}")
+            
+            self.add_decode_data(f"[{self.get_timestamp()}] CRC计算完成: {crc:04X}")
+            
+        except Exception as e:
+            messagebox.showerror("错误", f"CRC计算失败: {str(e)}")
+            
+    def verify_crc_test(self):
+        """验证CRC测试"""
+        try:
+            data_str = self.crc_test_data_var.get().strip()
+            # 清理数据字符串
+            data_str = data_str.replace(" ", "").replace(",", "").replace(";", "")
+            
+            # 验证数据格式
+            if not all(c in '0123456789ABCDEFabcdef' for c in data_str):
+                raise ValueError("数据格式错误，请输入有效的十六进制数据")
+            
+            # 将十六进制字符串转换为字节列表
+            data_bytes = []
+            for i in range(0, len(data_str), 2):
+                if i + 1 < len(data_str):
+                    data_bytes.append(int(data_str[i:i+2], 16))
+            
+            if len(data_bytes) < 3:
+                raise ValueError("数据长度不足，至少需要3个字节（包含CRC）")
+            
+            # 验证CRC
+            result = self.verify_crc(data_bytes)
+            
+            # 显示结果
+            data_hex = " ".join([f"{b:02X}" for b in data_bytes])
+            self.add_raw_data(f"[{self.get_timestamp()}] CRC验证测试:")
+            self.add_raw_data(f"[{self.get_timestamp()}] 数据: {data_hex}")
+            
+            if result:
+                self.add_decode_data(f"[{self.get_timestamp()}] CRC验证成功 ✓")
+            else:
+                self.add_decode_data(f"[{self.get_timestamp()}] CRC验证失败 ✗")
+                
+        except Exception as e:
+            messagebox.showerror("错误", f"CRC验证失败: {str(e)}")
+        
+    def verify_crc(self, data):
+        """验证CRC校验码"""
+        if len(data) < 3:  # 至少需要从站地址、功能码和CRC（2字节）
+            self.add_decode_data(f"[{self.get_timestamp()}] CRC验证失败: 数据长度不足")
+            return False
+            
+        # 提取数据部分（不包括CRC）
+        data_without_crc = data[:-2]
+        received_crc_low = data[-2]
+        received_crc_high = data[-1]
+        received_crc = (received_crc_high << 8) | received_crc_low
+        
+        # 计算数据部分的CRC
+        calculated_crc = self.calculate_crc16(data_without_crc)
+        
+        if calculated_crc == received_crc:
+            self.add_decode_data(f"[{self.get_timestamp()}] CRC验证成功: 接收CRC {received_crc:04X} = 计算CRC {calculated_crc:04X}")
+            return True
+        else:
+            self.add_decode_data(f"[{self.get_timestamp()}] CRC验证失败: 接收CRC {received_crc:04X} ≠ 计算CRC {calculated_crc:04X}")
+            return False
+        
+    def calculate_crc16(self, data):
+        """计算CRC16校验码（Modbus标准）"""
+        crc = 0xFFFF
+        for byte in data:
+            crc ^= byte
+            for _ in range(8):
+                if crc & 0x0001:
+                    crc = (crc >> 1) ^ 0xA001
+                else:
+                    crc = crc >> 1
+        return crc
+    
     def calculate_crc(self, data):
-        """计算CRC校验码（简化版）"""
-        # 这里实现CRC16计算，目前返回模拟值
-        return 0x1234
+        """计算CRC校验码（兼容旧接口）"""
+        # 将十六进制字符串转换为字节列表
+        data_bytes = []
+        for i in range(0, len(data), 2):
+            if i + 1 < len(data):
+                data_bytes.append(int(data[i:i+2], 16))
+        
+        return self.calculate_crc16(data_bytes)
         
     def clear_data(self):
         """清空数据显示"""
@@ -609,6 +785,11 @@ class ModbusParserWindow:
         result.append(f"原始数据: {' '.join([f'{b:02X}' for b in data_bytes])}\n")
         result.append(f"数据长度: {len(data_bytes)} 字节\n")
         
+        # CRC校验
+        if len(data_bytes) >= 3:  # 至少需要从站地址、功能码和CRC（2字节）
+            crc_result = self.verify_crc_for_parser(data_bytes)
+            result.append(f"CRC校验: {crc_result}\n")
+        
         # 根据功能码进行不同解析
         if function_code in ["01", "02"]:
             result.extend(self.parse_coil_data(data_bytes, function_code))
@@ -622,6 +803,37 @@ class ModbusParserWindow:
             result.append("未知功能码，无法解析")
             
         return "".join(result)
+        
+    def verify_crc_for_parser(self, data_bytes):
+        """为解析器验证CRC校验码"""
+        if len(data_bytes) < 3:
+            return "数据长度不足，无法验证CRC"
+            
+        # 提取数据部分（不包括CRC）
+        data_without_crc = data_bytes[:-2]
+        received_crc_low = data_bytes[-2]
+        received_crc_high = data_bytes[-1]
+        received_crc = (received_crc_high << 8) | received_crc_low
+        
+        # 计算数据部分的CRC
+        calculated_crc = self.calculate_crc16_for_parser(data_without_crc)
+        
+        if calculated_crc == received_crc:
+            return f"✓ 验证成功 (接收: {received_crc:04X} = 计算: {calculated_crc:04X})"
+        else:
+            return f"✗ 验证失败 (接收: {received_crc:04X} ≠ 计算: {calculated_crc:04X})"
+            
+    def calculate_crc16_for_parser(self, data):
+        """为解析器计算CRC16校验码（Modbus标准）"""
+        crc = 0xFFFF
+        for byte in data:
+            crc ^= byte
+            for _ in range(8):
+                if crc & 0x0001:
+                    crc = (crc >> 1) ^ 0xA001
+                else:
+                    crc = crc >> 1
+        return crc
         
     def parse_coil_data(self, data_bytes, function_code):
         """解析线圈/离散输入数据"""
@@ -809,13 +1021,16 @@ class ModbusParserWindow:
             if os.path.exists(self.annotation_file):
                 with open(self.annotation_file, 'r', encoding='utf-8') as f:
                     self.annotations = json.load(f)
-                self.status_var.set("注释已加载")
+                if hasattr(self, 'status_var'):
+                    self.status_var.set("注释已加载")
             else:
                 self.annotations = {}
-                self.status_var.set("注释文件不存在，已创建新的注释字典")
+                if hasattr(self, 'status_var'):
+                    self.status_var.set("注释文件不存在，已创建新的注释字典")
         except Exception as e:
             self.annotations = {}
-            messagebox.showerror("错误", f"加载注释失败: {str(e)}")
+            if hasattr(self, 'status_var'):
+                messagebox.showerror("错误", f"加载注释失败: {str(e)}")
             
     def export_annotations(self):
         """导出注释为文本文件"""
