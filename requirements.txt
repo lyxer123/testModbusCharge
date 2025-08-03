@@ -1,0 +1,10 @@
+# 现代化UI应用依赖
+# 此项目使用Python标准库，无需额外安装依赖包
+
+# Python版本要求
+# Python >= 3.6
+
+# 标准库依赖（已包含在Python安装中）
+# tkinter - GUI框架
+# os - 操作系统接口
+# 无需pip install，这些库已预装 
