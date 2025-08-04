@@ -895,7 +895,7 @@ class ModbusParserWindow:
         
         # 功能码选择
         ttk.Label(input_frame, text="功能码:").grid(row=0, column=0, sticky=tk.W, pady=2)
-        self.function_code_var = tk.StringVar(value="01")
+        self.function_code_var = tk.StringVar(value="01 - 读线圈状态")
         function_code_combo = ttk.Combobox(input_frame, textvariable=self.function_code_var,
                                           values=["01 - 读线圈状态", "02 - 读离散输入", "03 - 读保持寄存器", 
                                                  "04 - 读输入寄存器", "05 - 写单个线圈", "06 - 写单个寄存器",
