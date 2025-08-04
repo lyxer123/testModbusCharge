@@ -270,10 +270,6 @@ class ModernUI:
         ttk.Button(button_frame, text="发送", command=self.send_modbus, style="Accent.TButton").grid(row=0, column=0, padx=2)
         ttk.Button(button_frame, text="清空", command=self.clear_data).grid(row=0, column=1, padx=2)
         
-        # 分隔线
-        separator3 = ttk.Separator(settings_frame, orient='horizontal')
-        separator3.grid(row=17, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
-        
 
         
     def create_modbus_data_area(self):
