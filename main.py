@@ -6,7 +6,7 @@ import serial.tools.list_ports
 class ModernUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("测试应用")
+        self.root.title("工控测试软件")
         
         # 设置窗口默认大小为显示器窗口的一半
         self.setup_window_size()
