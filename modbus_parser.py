@@ -10,8 +10,8 @@ class ModbusParserWindow:
         self.parent = parent
         self.window = tk.Toplevel(parent)
         self.window.title("Modbus解析对码")
-        self.window.geometry("1000x700")
-        self.window.minsize(800, 600)
+        self.window.geometry("1000x600")  # 减少高度从700到600
+        self.window.minsize(800, 500)     # 减少最小高度从600到500
         
         # 注释数据存储
         self.annotations = {}
@@ -32,29 +32,30 @@ class ModbusParserWindow:
         self.status_var = tk.StringVar()
         self.status_var.set("就绪")
         
-        # 主框架
-        main_frame = ttk.Frame(self.window, padding="10")
+        # 主框架 - 减少padding
+        main_frame = ttk.Frame(self.window, padding="5")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # 配置网格权重
         self.window.columnconfigure(0, weight=1)
         self.window.rowconfigure(0, weight=1)
         main_frame.columnconfigure(1, weight=1)
-        main_frame.rowconfigure(1, weight=1)
+        main_frame.rowconfigure(0, weight=1)  # 让tab控件占据更多空间
+        main_frame.rowconfigure(1, weight=0)  # 状态栏不扩展
         
-        # 创建Tab控件
+        # 创建Tab控件 - 减少下边距到最小
         self.notebook = ttk.Notebook(main_frame)
-        self.notebook.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=5, pady=5)
+        self.notebook.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=5, pady=(5, 0))
         
         # 功能码解析页面
         self.function_code_frame = ttk.Frame(self.notebook, padding="10")
         self.notebook.add(self.function_code_frame, text="功能码解析")
         self.create_function_code_parser()
         
-        # 状态栏
+        # 状态栏 - 紧贴notebook下部，无间距
         status_bar = ttk.Label(main_frame, textvariable=self.status_var, 
                               relief=tk.SUNKEN, anchor=tk.W)
-        status_bar.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
+        status_bar.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 0))
         
     def create_function_code_parser(self):
         """创建功能码解析界面"""
