@@ -897,8 +897,10 @@ class ModbusParserWindow:
         ttk.Label(input_frame, text="功能码:").grid(row=0, column=0, sticky=tk.W, pady=2)
         self.function_code_var = tk.StringVar(value="01")
         function_code_combo = ttk.Combobox(input_frame, textvariable=self.function_code_var,
-                                          values=["01", "02", "03", "04", "05", "06", "15", "16"], 
-                                          width=10, state="readonly")
+                                          values=["01 - 读线圈状态", "02 - 读离散输入", "03 - 读保持寄存器", 
+                                                 "04 - 读输入寄存器", "05 - 写单个线圈", "06 - 写单个寄存器",
+                                                 "15 - 写多个线圈", "16 - 写多个寄存器"], 
+                                          width=20, state="readonly")
         function_code_combo.grid(row=0, column=1, sticky=tk.W, pady=2)
         function_code_combo.bind('<<ComboboxSelected>>', self.on_function_code_change)
         
@@ -970,8 +972,10 @@ class ModbusParserWindow:
         
     def on_function_code_change(self, event=None):
         """功能码改变事件"""
-        function_code = self.function_code_var.get()
-        self.status_var.set(f"当前功能码: {function_code}")
+        function_code_full = self.function_code_var.get()
+        # 提取功能码的数字部分
+        function_code = function_code_full.split(" - ")[0] if " - " in function_code_full else function_code_full
+        self.status_var.set(f"当前功能码: {function_code_full}")
         
         # 根据功能码设置默认数据
         default_data = {
@@ -991,7 +995,9 @@ class ModbusParserWindow:
     def parse_data(self):
         """解析数据"""
         try:
-            function_code = self.function_code_var.get()
+            function_code_full = self.function_code_var.get()
+            # 提取功能码的数字部分
+            function_code = function_code_full.split(" - ")[0] if " - " in function_code_full else function_code_full
             data_str = self.data_input_var.get().strip()
             
             # 清理数据字符串
@@ -1008,7 +1014,7 @@ class ModbusParserWindow:
             self.result_text.delete(1.0, tk.END)
             self.result_text.insert(tk.END, result)
             
-            self.status_var.set(f"数据解析完成 - 功能码: {function_code}")
+            self.status_var.set(f"数据解析完成 - 功能码: {function_code_full}")
             
         except Exception as e:
             messagebox.showerror("解析错误", str(e))
