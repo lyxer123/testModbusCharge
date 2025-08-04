@@ -43,7 +43,7 @@ class ModbusParserWindow:
         main_frame.rowconfigure(0, weight=1)  # 让tab控件占据更多空间
         main_frame.rowconfigure(1, weight=0)  # 状态栏不扩展
         
-        # 创建Tab控件 - 减少下边距到最小
+        # 创建Tab控件 - 减少下边距，让状态栏更贴近
         self.notebook = ttk.Notebook(main_frame)
         self.notebook.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=5, pady=(5, 0))
         
@@ -52,7 +52,7 @@ class ModbusParserWindow:
         self.notebook.add(self.function_code_frame, text="功能码解析")
         self.create_function_code_parser()
         
-        # 状态栏 - 紧贴notebook下部，无间距
+        # 状态栏 - 紧贴notebook下部，最小间距
         status_bar = ttk.Label(main_frame, textvariable=self.status_var, 
                               relief=tk.SUNKEN, anchor=tk.W)
         status_bar.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 0))
