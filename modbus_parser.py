@@ -32,8 +32,8 @@ class ModbusParserWindow:
         self.status_var = tk.StringVar()
         self.status_var.set("就绪")
         
-        # 主框架 - 减少padding
-        main_frame = ttk.Frame(self.window, padding="5")
+        # 主框架 - 进一步减少padding
+        main_frame = ttk.Frame(self.window, padding="2")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # 配置网格权重
@@ -43,29 +43,33 @@ class ModbusParserWindow:
         main_frame.rowconfigure(0, weight=1)  # 让tab控件占据更多空间
         main_frame.rowconfigure(1, weight=0)  # 状态栏不扩展
         
-        # 创建Tab控件 - 减少下边距，让状态栏更贴近
+        # 创建Tab控件 - 最小间距，让状态栏更贴近
         self.notebook = ttk.Notebook(main_frame)
-        self.notebook.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=5, pady=(5, 0))
+        self.notebook.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=2, pady=(2, 0))
         
         # 功能码解析页面
         self.function_code_frame = ttk.Frame(self.notebook, padding="10")
         self.notebook.add(self.function_code_frame, text="功能码解析")
         self.create_function_code_parser()
         
-        # 状态栏 - 紧贴notebook下部，最小间距
+        # 状态栏 - 紧贴notebook下部，无间距
         status_bar = ttk.Label(main_frame, textvariable=self.status_var, 
                               relief=tk.SUNKEN, anchor=tk.W)
         status_bar.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 0))
         
     def create_function_code_parser(self):
         """创建功能码解析界面"""
-        # 配置网格权重
+        # 配置网格权重 - 让内容填满整个tab区域
         self.function_code_frame.columnconfigure(1, weight=1)
-        self.function_code_frame.rowconfigure(1, weight=1)
+        self.function_code_frame.rowconfigure(0, weight=1)
         
-        # 左侧输入区域
+        # 左侧输入区域 - 添加sticky参数让输入区域填满左侧
         input_frame = ttk.LabelFrame(self.function_code_frame, text="数据输入", padding="10")
         input_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
+        
+        # 配置输入框架的网格权重，让内容垂直分布
+        input_frame.columnconfigure(1, weight=1)
+        input_frame.rowconfigure(11, weight=1)  # 让最后一个按钮区域扩展
         
         # 功能码选择
         ttk.Label(input_frame, text="功能码:").grid(row=0, column=0, sticky=tk.W, pady=2)
@@ -120,15 +124,17 @@ class ModbusParserWindow:
         ttk.Button(annotation_button_frame, text="删除", command=self.delete_annotation).grid(row=0, column=1, padx=2)
         ttk.Button(annotation_button_frame, text="查找", command=self.find_annotation).grid(row=0, column=2, padx=2)
         
-        ttk.Button(input_frame, text="注释格式帮助", command=self.show_annotation_help).grid(row=11, column=0, columnspan=2, pady=5)
+        # 注释格式帮助按钮 - 放在底部，让它填满剩余空间
+        help_button = ttk.Button(input_frame, text="注释格式帮助", command=self.show_annotation_help)
+        help_button.grid(row=11, column=0, columnspan=2, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S))
         
-        # 右侧解析结果显示区域
+        # 右侧解析结果显示区域 - 确保填满整个右侧区域
         result_frame = ttk.Frame(self.function_code_frame)
         result_frame.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S))
         result_frame.columnconfigure(0, weight=1)
         result_frame.rowconfigure(0, weight=1)
         
-        # 解析结果文本框
+        # 解析结果文本框 - 确保填满整个框架
         result_label_frame = ttk.LabelFrame(result_frame, text="解析结果", padding="5")
         result_label_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         result_label_frame.columnconfigure(0, weight=1)
