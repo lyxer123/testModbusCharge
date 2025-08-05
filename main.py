@@ -814,8 +814,8 @@ class ModernUI:
 • Modbus解析对码功能
 • 响应式设计
 
-开发者：AI助手
-创建时间：2024年"""
+开发者：lyxer123
+创建时间：2025年"""
         
         messagebox.showinfo("关于本软件", about_text)
         
