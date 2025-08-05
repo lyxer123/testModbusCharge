@@ -87,6 +87,9 @@ class ModernUI:
         self.test_27930_frame = ttk.Frame(self.notebook, padding="10")
         self.notebook.add(self.test_27930_frame, text="27930测试")
         
+        # 创建27930页面内容
+        self.create_27930_interface()
+        
         # 删除状态栏，不再显示窗口大小信息
         
         # 应用现代化样式
@@ -308,6 +311,185 @@ class ModernUI:
         
         self.decode_data_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         decode_data_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        
+    def create_27930_interface(self):
+        """创建27930测试界面"""
+        # 配置27930页面的网格权重
+        self.test_27930_frame.columnconfigure(1, weight=1)
+        self.test_27930_frame.rowconfigure(0, weight=1)
+        
+        # 左侧设置区域
+        self.create_27930_settings()
+        
+        # 右侧数据显示区域
+        self.create_27930_data_area()
+        
+    def create_27930_settings(self):
+        """创建左侧27930设置区域"""
+        # 设置区域框架
+        settings_frame = ttk.LabelFrame(self.test_27930_frame, text="CAN接口设置", padding="10")
+        settings_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
+        
+        # CAN设备选择
+        ttk.Label(settings_frame, text="CAN设备:").grid(row=0, column=0, sticky=tk.W, pady=2)
+        can_device_frame = ttk.Frame(settings_frame)
+        can_device_frame.grid(row=0, column=1, sticky=tk.W, pady=2)
+        
+        self.can_device_var = tk.StringVar()
+        self.can_device_combo = ttk.Combobox(can_device_frame, textvariable=self.can_device_var, 
+                                            width=15, state="readonly")
+        self.can_device_combo.grid(row=0, column=0, padx=(0, 2))
+        
+        ttk.Button(can_device_frame, text="刷新", command=self.refresh_can_devices, width=6).grid(row=0, column=1, padx=(2, 0))
+        
+        # CAN设备状态图标
+        self.can_status_label = tk.Label(can_device_frame, text="ℹ", font=("Arial", 12), fg="black", cursor="hand2")
+        self.can_status_label.grid(row=0, column=2, padx=(5, 0))
+        self.can_status_label.bind("<Enter>", self.show_can_info_tooltip)
+        self.can_status_label.bind("<Leave>", self.hide_can_info_tooltip)
+        
+        # 初始化CAN设备列表
+        self.refresh_can_devices()
+        
+        # CAN波特率设置
+        ttk.Label(settings_frame, text="CAN波特率:").grid(row=1, column=0, sticky=tk.W, pady=2)
+        self.can_baud_rate_var = tk.StringVar(value="500000")
+        can_baud_rate_combo = ttk.Combobox(settings_frame, textvariable=self.can_baud_rate_var,
+                                          values=["125000", "250000", "500000", "1000000"],
+                                          width=15, state="readonly")
+        can_baud_rate_combo.grid(row=1, column=1, sticky=tk.W, pady=2)
+        
+        # CAN通道设置
+        ttk.Label(settings_frame, text="CAN通道:").grid(row=2, column=0, sticky=tk.W, pady=2)
+        self.can_channel_var = tk.StringVar(value="0")
+        can_channel_combo = ttk.Combobox(settings_frame, textvariable=self.can_channel_var,
+                                        values=["0", "1"], width=15, state="readonly")
+        can_channel_combo.grid(row=2, column=1, sticky=tk.W, pady=2)
+        
+        # CAN开关按钮
+        self.can_status = False  # CAN状态：False=关闭，True=打开
+        self.can_button = ttk.Button(settings_frame, text="打开", command=self.toggle_can, style="Accent.TButton", width=8)
+        self.can_button.grid(row=3, column=0, columnspan=2, pady=5)
+        
+        # 分隔线
+        separator1 = ttk.Separator(settings_frame, orient='horizontal')
+        separator1.grid(row=4, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
+        
+        # 27930功能设置
+        ttk.Label(settings_frame, text="27930功能:", font=("Arial", 10, "bold")).grid(row=5, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
+        
+        # 消息类型选择
+        ttk.Label(settings_frame, text="消息类型:").grid(row=6, column=0, sticky=tk.W, pady=2)
+        self.message_type_var = tk.StringVar(value="充电握手")
+        message_type_combo = ttk.Combobox(settings_frame, textvariable=self.message_type_var,
+                                         values=["充电握手", "充电参数配置", "充电状态", "充电统计", "充电停止", "自定义消息"],
+                                         width=15, state="readonly")
+        message_type_combo.grid(row=6, column=1, sticky=tk.W, pady=2)
+        
+        # 发送方地址
+        ttk.Label(settings_frame, text="发送方地址:").grid(row=7, column=0, sticky=tk.W, pady=2)
+        sender_address_frame = ttk.Frame(settings_frame)
+        sender_address_frame.grid(row=7, column=1, sticky=tk.W, pady=2)
+        
+        self.sender_address_var = tk.StringVar(value="01")
+        sender_address_entry = ttk.Entry(sender_address_frame, textvariable=self.sender_address_var, width=8)
+        sender_address_entry.grid(row=0, column=0, padx=(0, 2))
+        
+        self.sender_address_base_var = tk.StringVar(value="HEX")
+        sender_address_base_combo = ttk.Combobox(sender_address_frame, textvariable=self.sender_address_base_var,
+                                                values=["DEC", "HEX"], width=4, state="readonly")
+        sender_address_base_combo.grid(row=0, column=1)
+        
+        # 接收方地址
+        ttk.Label(settings_frame, text="接收方地址:").grid(row=8, column=0, sticky=tk.W, pady=2)
+        receiver_address_frame = ttk.Frame(settings_frame)
+        receiver_address_frame.grid(row=8, column=1, sticky=tk.W, pady=2)
+        
+        self.receiver_address_var = tk.StringVar(value="02")
+        receiver_address_entry = ttk.Entry(receiver_address_frame, textvariable=self.receiver_address_var, width=8)
+        receiver_address_entry.grid(row=0, column=0, padx=(0, 2))
+        
+        self.receiver_address_base_var = tk.StringVar(value="HEX")
+        receiver_address_base_combo = ttk.Combobox(receiver_address_frame, textvariable=self.receiver_address_base_var,
+                                                  values=["DEC", "HEX"], width=4, state="readonly")
+        receiver_address_base_combo.grid(row=0, column=1)
+        
+        # 扫描设置
+        ttk.Label(settings_frame, text="扫描:").grid(row=9, column=0, sticky=tk.W, pady=2)
+        scan_rate_frame = ttk.Frame(settings_frame)
+        scan_rate_frame.grid(row=9, column=1, sticky=tk.W, pady=2)
+        
+        self.can_scan_rate_var = tk.StringVar(value="1000")
+        can_scan_rate_entry = ttk.Entry(scan_rate_frame, textvariable=self.can_scan_rate_var, width=8)
+        can_scan_rate_entry.grid(row=0, column=0, padx=(0, 5))
+        
+        ttk.Label(scan_rate_frame, text="ms").grid(row=0, column=1)
+        
+        # 扫描按钮
+        self.can_scan_button = ttk.Button(scan_rate_frame, text="开始", command=self.toggle_can_scan, style="Accent.TButton", width=6)
+        self.can_scan_button.grid(row=0, column=2, padx=(10, 0))
+        
+        # 定时器状态
+        self.can_scan_timer = None
+        self.can_scanning = False
+        
+        # 分隔线
+        separator2 = ttk.Separator(settings_frame, orient='horizontal')
+        separator2.grid(row=10, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
+        
+        # 数据显示设置
+        ttk.Label(settings_frame, text="显示设置:", font=("Arial", 10, "bold")).grid(row=11, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
+        
+        # 数据显示格式
+        self.can_data_format_var = tk.StringVar(value="HEX")
+        can_format_frame = ttk.Frame(settings_frame)
+        can_format_frame.grid(row=12, column=0, columnspan=3, sticky=tk.W, pady=1)
+        ttk.Radiobutton(can_format_frame, text="十六进制", variable=self.can_data_format_var, value="HEX").grid(row=0, column=0, padx=(0, 20))
+        ttk.Radiobutton(can_format_frame, text="十进制", variable=self.can_data_format_var, value="DEC").grid(row=0, column=1)
+        
+        # 控制按钮
+        button_frame = ttk.Frame(settings_frame)
+        button_frame.grid(row=13, column=0, columnspan=3, pady=10)
+        
+        ttk.Button(button_frame, text="发送", command=self.send_27930, style="Accent.TButton").grid(row=0, column=0, padx=2)
+        ttk.Button(button_frame, text="清空", command=self.clear_27930_data).grid(row=0, column=1, padx=2)
+        
+    def create_27930_data_area(self):
+        """创建右侧27930数据显示区域"""
+        # 数据区域框架
+        data_frame = ttk.Frame(self.test_27930_frame)
+        data_frame.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S))
+        data_frame.columnconfigure(0, weight=1)
+        data_frame.rowconfigure(0, weight=1)
+        data_frame.rowconfigure(1, weight=1)
+        
+        # 原始数据区域
+        raw_data_frame = ttk.LabelFrame(data_frame, text="原始数据", padding="5")
+        raw_data_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 5))
+        raw_data_frame.columnconfigure(0, weight=1)
+        raw_data_frame.rowconfigure(0, weight=1)
+        
+        # 原始数据文本框
+        self.can_raw_data_text = tk.Text(raw_data_frame, height=15, width=50, font=("Consolas", 9))
+        can_raw_data_scrollbar = ttk.Scrollbar(raw_data_frame, orient="vertical", command=self.can_raw_data_text.yview)
+        self.can_raw_data_text.configure(yscrollcommand=can_raw_data_scrollbar.set)
+        
+        self.can_raw_data_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        can_raw_data_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        
+        # 数据解析区域
+        parse_data_frame = ttk.LabelFrame(data_frame, text="数据解析", padding="5")
+        parse_data_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        parse_data_frame.columnconfigure(0, weight=1)
+        parse_data_frame.rowconfigure(0, weight=1)
+        
+        # 数据解析文本框
+        self.can_parse_data_text = tk.Text(parse_data_frame, height=10, width=50, font=("Consolas", 9))
+        can_parse_data_scrollbar = ttk.Scrollbar(parse_data_frame, orient="vertical", command=self.can_parse_data_text.yview)
+        self.can_parse_data_text.configure(yscrollcommand=can_parse_data_scrollbar.set)
+        
+        self.can_parse_data_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        can_parse_data_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         
     def apply_modern_style(self):
         """应用现代化样式"""
@@ -823,6 +1005,268 @@ class ModernUI:
         """窗口大小改变事件处理"""
         # 窗口大小改变时不做任何处理，因为已删除状态栏
         pass
+    
+    # 27930相关方法
+    def refresh_can_devices(self):
+        """刷新CAN设备列表"""
+        try:
+            # 模拟CAN设备列表（实际应用中应该检测真实的CAN设备）
+            can_devices = ["CAN1", "CAN2", "USB-CAN", "PCI-CAN"]
+            self.can_device_combo['values'] = can_devices
+            if not self.can_device_var.get():
+                self.can_device_var.set("CAN1")
+            
+            # 更新图标状态 - 黑色表示有可用设备
+            self.can_status_label.config(fg="black")
+            self.can_devices_info = "检测到CAN设备\n请选择设备并设置参数"
+        except Exception as e:
+            # 如果检测失败，使用默认列表
+            can_devices = ["CAN1", "CAN2", "USB-CAN", "PCI-CAN"]
+            self.can_device_combo['values'] = can_devices
+            if not self.can_device_var.get():
+                self.can_device_var.set("CAN1")
+            
+            # 更新图标状态 - 红色表示检测功能不可用
+            self.can_status_label.config(fg="red")
+            self.can_devices_info = f"CAN设备检测功能不可用\n请手动选择设备\n错误: {str(e)}"
+    
+    def show_can_info_tooltip(self, event=None):
+        """显示CAN设备信息工具提示"""
+        if hasattr(self, 'can_devices_info') and self.can_devices_info:
+            # 创建工具提示窗口
+            tooltip = tk.Toplevel(self.root)
+            tooltip.wm_overrideredirect(True)
+            tooltip.wm_geometry(f"+{event.x_root+10}+{event.y_root+10}")
+            
+            # 设置工具提示样式
+            tooltip.configure(bg='lightyellow', relief='solid', borderwidth=1)
+            
+            # 创建标签显示信息
+            label = tk.Label(tooltip, text=self.can_devices_info, 
+                           bg='lightyellow', fg='black', 
+                           font=("Arial", 9), justify=tk.LEFT)
+            label.pack(padx=5, pady=5)
+            
+            # 保存工具提示引用
+            self.can_tooltip = tooltip
+            
+            # 绑定鼠标离开事件
+            self.can_status_label.bind("<Leave>", self.hide_can_info_tooltip)
+    
+    def hide_can_info_tooltip(self, event=None):
+        """隐藏CAN设备信息工具提示"""
+        if hasattr(self, 'can_tooltip'):
+            self.can_tooltip.destroy()
+            delattr(self, 'can_tooltip')
+    
+    def toggle_can(self):
+        """CAN开关切换"""
+        if not self.can_status:
+            # 当前CAN关闭，执行打开操作
+            self.open_can()
+        else:
+            # 当前CAN打开，执行关闭操作
+            self.close_can()
+    
+    def open_can(self):
+        """打开CAN设备"""
+        try:
+            # 这里应该实现实际的CAN打开逻辑
+            # 目前只是模拟
+            device = self.can_device_var.get()
+            baud = int(self.can_baud_rate_var.get())
+            channel = int(self.can_channel_var.get())
+            self.add_can_raw_data(f"[{self.get_timestamp()}] CAN设备 {device} 已打开，波特率: {baud}, 通道: {channel}")
+            # 更新CAN状态和按钮文本
+            self.can_status = True
+            self.can_button.config(text="关闭", style="TButton")
+        except Exception as e:
+            messagebox.showerror("错误", f"打开CAN设备失败: {str(e)}")
+    
+    def close_can(self):
+        """关闭CAN设备"""
+        try:
+            # 这里应该实现实际的CAN关闭逻辑
+            self.add_can_raw_data(f"[{self.get_timestamp()}] CAN设备已关闭")
+            # 更新CAN状态和按钮文本
+            self.can_status = False
+            self.can_button.config(text="打开", style="Accent.TButton")
+        except Exception as e:
+            messagebox.showerror("错误", f"关闭CAN设备失败: {str(e)}")
+    
+    def toggle_can_scan(self):
+        """CAN扫描开关切换"""
+        if not self.can_scanning:
+            # 当前扫描停止，执行开始扫描操作
+            self.start_can_scan()
+        else:
+            # 当前扫描进行中，执行停止扫描操作
+            self.stop_can_scan()
+    
+    def start_can_scan(self):
+        """开始定时CAN扫描"""
+        if not self.can_status:
+            messagebox.showwarning("警告", "请先打开CAN设备")
+            return
+        
+        try:
+            scan_rate = int(self.can_scan_rate_var.get())
+            if scan_rate < 100:
+                messagebox.showwarning("警告", "扫描间隔不能小于100ms")
+                return
+            
+            self.can_scanning = True
+            self.can_scan_timer = self.root.after(scan_rate, self.scan_27930)
+            self.can_scan_button.config(text="停止", style="TButton")
+            self.add_can_raw_data(f"[{self.get_timestamp()}] 开始定时CAN扫描，间隔: {scan_rate}ms")
+        except ValueError:
+            messagebox.showerror("错误", "请输入有效的扫描间隔")
+    
+    def stop_can_scan(self):
+        """停止定时CAN扫描"""
+        if self.can_scan_timer:
+            self.root.after_cancel(self.can_scan_timer)
+            self.can_scan_timer = None
+        self.can_scanning = False
+        self.can_scan_button.config(text="开始", style="Accent.TButton")
+        self.add_can_raw_data(f"[{self.get_timestamp()}] 停止定时CAN扫描")
+    
+    def scan_27930(self):
+        """执行一次27930扫描"""
+        if self.can_scanning and self.can_status:
+            # 执行一次27930通讯
+            self.send_27930()
+            
+            # 设置下一次扫描
+            try:
+                scan_rate = int(self.can_scan_rate_var.get())
+                self.can_scan_timer = self.root.after(scan_rate, self.scan_27930)
+            except ValueError:
+                self.stop_can_scan()
+                messagebox.showerror("错误", "扫描间隔设置无效，已停止扫描")
+    
+    def send_27930(self):
+        """发送27930数据"""
+        try:
+            # 获取设置参数
+            message_type = self.message_type_var.get()
+            
+            # 解析发送方地址
+            sender_addr_str = self.sender_address_var.get().strip()
+            if self.sender_address_base_var.get() == "HEX":
+                if sender_addr_str.upper().startswith('0X'):
+                    sender_addr = int(sender_addr_str, 16)
+                else:
+                    sender_addr = int(sender_addr_str, 16)
+            else:
+                sender_addr = int(sender_addr_str)
+            
+            # 解析接收方地址
+            receiver_addr_str = self.receiver_address_var.get().strip()
+            if self.receiver_address_base_var.get() == "HEX":
+                if receiver_addr_str.upper().startswith('0X'):
+                    receiver_addr = int(receiver_addr_str, 16)
+                else:
+                    receiver_addr = int(receiver_addr_str, 16)
+            else:
+                receiver_addr = int(receiver_addr_str)
+            
+            # 根据消息类型构建27930数据包
+            if message_type == "充电握手":
+                # 充电握手消息
+                can_id = 0x1801F456  # 示例CAN ID
+                data = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]
+                message_info = f"充电握手 - 发送方:{sender_addr:02X}, 接收方:{receiver_addr:02X}"
+                
+            elif message_type == "充电参数配置":
+                # 充电参数配置消息
+                can_id = 0x1802F456
+                data = [0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80]
+                message_info = f"充电参数配置 - 发送方:{sender_addr:02X}, 接收方:{receiver_addr:02X}"
+                
+            elif message_type == "充电状态":
+                # 充电状态消息
+                can_id = 0x1803F456
+                data = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x11, 0x22]
+                message_info = f"充电状态 - 发送方:{sender_addr:02X}, 接收方:{receiver_addr:02X}"
+                
+            elif message_type == "充电统计":
+                # 充电统计消息
+                can_id = 0x1804F456
+                data = [0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA]
+                message_info = f"充电统计 - 发送方:{sender_addr:02X}, 接收方:{receiver_addr:02X}"
+                
+            elif message_type == "充电停止":
+                # 充电停止消息
+                can_id = 0x1805F456
+                data = [0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11, 0x22]
+                message_info = f"充电停止 - 发送方:{sender_addr:02X}, 接收方:{receiver_addr:02X}"
+                
+            else:
+                # 自定义消息
+                can_id = 0x1800F456
+                data = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+                message_info = f"自定义消息 - 发送方:{sender_addr:02X}, 接收方:{receiver_addr:02X}"
+            
+            # 构建CAN数据包
+            can_data = [can_id >> 24, (can_id >> 16) & 0xFF, (can_id >> 8) & 0xFF, can_id & 0xFF] + data
+            
+            # 转换为十六进制字符串显示
+            can_hex = " ".join([f"{b:02X}" for b in can_data])
+            
+            self.add_can_raw_data(f"[{self.get_timestamp()}] 发送: {can_hex}")
+            self.add_can_parse_data(f"[{self.get_timestamp()}] {message_info}")
+            self.add_can_parse_data(f"  CAN ID: {can_id:08X}")
+            self.add_can_parse_data(f"  数据: {' '.join([f'{d:02X}' for d in data])}")
+            
+            # 模拟接收响应
+            self.simulate_27930_response(can_id, data, message_type)
+            
+        except ValueError as e:
+            messagebox.showerror("错误", f"参数错误: {str(e)}")
+        except Exception as e:
+            messagebox.showerror("错误", f"发送失败: {str(e)}")
+    
+    def simulate_27930_response(self, can_id, data, message_type):
+        """模拟27930响应"""
+        import random
+        import time
+        
+        # 模拟延迟
+        time.sleep(0.1)
+        
+        # 生成响应数据
+        response_data = []
+        for _ in range(8):
+            response_data.append(random.randint(0, 255))
+        
+        # 构建响应CAN数据包
+        response_can_data = [can_id >> 24, (can_id >> 16) & 0xFF, (can_id >> 8) & 0xFF, can_id & 0xFF] + response_data
+        
+        # 转换为十六进制字符串显示
+        response_hex = " ".join([f"{b:02X}" for b in response_can_data])
+        
+        self.add_can_raw_data(f"[{self.get_timestamp()}] 接收: {response_hex}")
+        
+        # 解析响应数据
+        self.add_can_parse_data(f"[{self.get_timestamp()}] 响应: {message_type}")
+        self.add_can_parse_data(f"  CAN ID: {can_id:08X}")
+        self.add_can_parse_data(f"  响应数据: {' '.join([f'{d:02X}' for d in response_data])}")
+    
+    def clear_27930_data(self):
+        """清空27930数据显示"""
+        self.can_raw_data_text.delete(1.0, tk.END)
+        self.can_parse_data_text.delete(1.0, tk.END)
+    
+    def add_can_raw_data(self, data):
+        """添加CAN原始数据"""
+        self.can_raw_data_text.insert(tk.END, data + "\n")
+        self.can_raw_data_text.see(tk.END)
+    
+    def add_can_parse_data(self, data):
+        """添加CAN解析数据"""
+        self.can_parse_data_text.insert(tk.END, data + "\n")
+        self.can_parse_data_text.see(tk.END)
     
     def open_modbus_parser(self):
         """打开Modbus解析对码窗口"""
