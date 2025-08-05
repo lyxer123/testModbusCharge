@@ -39,7 +39,7 @@ class ModernUI:
         self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
         
         # 设置最小窗口大小
-        self.root.minsize(800, 600)
+        self.root.minsize(850, 600)
         
     def create_menu(self):
         """创建菜单栏"""

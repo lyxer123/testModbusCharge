@@ -10,7 +10,7 @@ class ModbusParserWindow:
         self.parent = parent
         self.window = tk.Toplevel(parent)
         self.window.title("Modbus解析对码")
-        self.window.geometry("1000x600")  # 减少高度从700到600
+        self.window.geometry("850x600")  # 减少高度从700到600
         self.window.minsize(800, 500)     # 减少最小高度从600到500
         
         # 注释数据存储
