@@ -84,7 +84,7 @@ class ModbusParserWindow:
         
         # 数据输入
         ttk.Label(input_frame, text="数据(HEX):").grid(row=1, column=0, sticky=tk.W, pady=2)
-        self.data_input_var = tk.StringVar(value="01 00 01 01 00 00 01 01")
+        self.data_input_var = tk.StringVar(value="01 01 00 00 00 04 3D CC")
         data_entry = ttk.Entry(input_frame, textvariable=self.data_input_var, width=30)
         data_entry.grid(row=1, column=1, sticky=tk.W, pady=2)
         
@@ -157,16 +157,16 @@ class ModbusParserWindow:
         function_code = function_code_full.split(" - ")[0] if " - " in function_code_full else function_code_full
         self.status_var.set(f"当前功能码: {function_code_full}")
         
-        # 根据功能码设置默认数据
+        # 根据功能码设置默认数据（实际应用场景的示例数据）
         default_data = {
-            "01": "01 00 01 01 00 00 01 01",  # 读线圈状态
-            "02": "02 00 01 01 00 00 01 01",  # 读离散输入
-            "03": "03 00 02 00 01 00 02",     # 读保持寄存器
-            "04": "04 00 02 00 01 00 02",     # 读输入寄存器
-            "05": "05 00 01 FF 00",           # 写单个线圈
-            "06": "06 00 01 00 0A",           # 写单个寄存器
-            "15": "0F 00 01 00 08 01 01 00 01 00 01 00 01 00 01",  # 写多个线圈
-            "16": "10 00 01 00 02 04 00 0A 00 0B"  # 写多个寄存器
+            "01": "01 01 00 00 00 04 3D CC",  # 读线圈状态 - 主机请求报文
+            "02": "01 02 00 00 00 08 3D 8C",  # 读离散输入 - 主机请求报文
+            "03": "01 03 00 00 00 02 25 CA",  # 读保持寄存器 - 主机请求报文
+            "04": "01 04 00 00 00 02 71 CB",  # 读输入寄存器 - 主机请求报文
+            "05": "01 05 00 01 FF 00 8C 3A",  # 写单个线圈 - 主机请求报文
+            "06": "01 06 00 01 00 0A 9D 9B",  # 写单个寄存器 - 主机请求报文
+            "15": "01 0F 00 00 00 08 01 FF FF FF FF FF FF FF 8C 3A",  # 写多个线圈 - 主机请求报文
+            "16": "01 10 00 00 00 02 04 00 0A 00 0B 8C 3A"  # 写多个寄存器 - 主机请求报文
         }
         
         if function_code in default_data:
@@ -203,7 +203,20 @@ class ModbusParserWindow:
     def parse_modbus_data(self, function_code, data_str):
         """解析Modbus数据"""
         result = []
-        result.append(f"=== Modbus功能码 {function_code} 数据解析 ===\n")
+        
+        # 添加功能码说明
+        function_descriptions = {
+            "01": "读线圈状态（功能码01）\n用途：读取设备的开关量输出（DO），如继电器状态。",
+            "02": "读离散输入（功能码02）\n用途：读取设备的开关量输入（DI），如传感器状态。",
+            "03": "读保持寄存器（功能码03）\n用途：读取设备的保持寄存器，如设备参数、设定值等。",
+            "04": "读输入寄存器（功能码04）\n用途：读取设备的输入寄存器，如传感器数据、测量值等。",
+            "05": "写单个线圈（功能码05）\n用途：控制单个开关量输出，如继电器开关。",
+            "06": "写单个寄存器（功能码06）\n用途：写入单个保持寄存器，如设定参数值。",
+            "15": "写多个线圈（功能码15）\n用途：同时控制多个开关量输出。",
+            "16": "写多个寄存器（功能码16）\n用途：同时写入多个保持寄存器。"
+        }
+        
+        result.append(f"=== {function_descriptions.get(function_code, f'功能码{function_code}')} ===\n")
         
         # 将十六进制字符串转换为字节列表
         data_bytes = []
@@ -234,32 +247,49 @@ class ModbusParserWindow:
         
         if len(data_bytes) < 1:
             return ["数据长度不足"]
-            
-        # 第一个字节是数据长度
-        data_length = data_bytes[0]
-        result.append(f"数据长度字节: {data_length:02X} ({data_length} 字节)\n")
         
-        # 解析每个字节的位
-        for i in range(1, min(len(data_bytes), data_length + 1)):
-            byte_value = data_bytes[i]
-            result.append(f"字节 {i}: {byte_value:02X} (二进制: {byte_value:08b})\n")
+        # 判断是请求报文还是响应报文
+        # 请求报文：从机地址 + 功能码 + 起始地址(2字节) + 数量(2字节) + CRC(2字节) = 8字节
+        # 响应报文：字节数 + 数据字节 + CRC(2字节)
+        if len(data_bytes) >= 6 and data_bytes[1] in [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x0F, 0x10]:
+            # 这是请求报文
+            result.append("=== 主机请求报文解析 ===\n")
+            result.append(f"{data_bytes[0]:02X}：从机地址 ({data_bytes[0]})\n")
+            result.append(f"{data_bytes[1]:02X}：功能码 ({data_bytes[1]:02d})\n")
+            result.append(f"{data_bytes[2]:02X} {data_bytes[3]:02X}：起始地址 ({data_bytes[2] * 256 + data_bytes[3]})\n")
+            result.append(f"{data_bytes[4]:02X} {data_bytes[5]:02X}：读取数量 ({data_bytes[4] * 256 + data_bytes[5]})\n")
+            if len(data_bytes) >= 8:
+                result.append(f"{data_bytes[6]:02X} {data_bytes[7]:02X}：CRC校验\n")
+        else:
+            # 这是响应报文
+            result.append("=== 从机响应报文解析 ===\n")
+            result.append(f"{data_bytes[0]:02X}：字节数 ({data_bytes[0]} 字节)\n")
             
-            # 解析每个位
-            for bit_pos in range(8):
-                bit_value = (byte_value >> bit_pos) & 1
-                bit_status = "开" if bit_value == 1 else "闭"
+            # 解析每个字节的位
+            for i in range(1, min(len(data_bytes), data_bytes[0] + 1)):
+                byte_value = data_bytes[i]
+                result.append(f"字节 {i}: {byte_value:02X} (二进制: {byte_value:08b})\n")
                 
-                # 计算全局位位置
-                global_bit_pos = (i - 1) * 8 + bit_pos
-                
-                # 获取注释
-                annotation_key = f"{function_code}_{global_bit_pos}"
-                annotation = self.annotations.get(annotation_key, "")
-                
-                result.append(f"  位 {bit_pos}: {bit_value} ({bit_status})")
-                if annotation:
-                    result.append(f" - {annotation}")
-                result.append("\n")
+                # 解析每个位
+                for bit_pos in range(8):
+                    bit_value = (byte_value >> bit_pos) & 1
+                    bit_status = "ON" if bit_value == 1 else "OFF"
+                    
+                    # 计算全局位位置
+                    global_bit_pos = (i - 1) * 8 + bit_pos
+                    
+                    # 获取注释
+                    annotation_key = f"{function_code}_{global_bit_pos}"
+                    annotation = self.annotations.get(annotation_key, "")
+                    
+                    # 根据功能码显示不同的文本
+                    if function_code == "01":
+                        result.append(f"  线圈 {global_bit_pos}: {bit_value} ({bit_status})")
+                    else:  # function_code == "02"
+                        result.append(f"  离散输入 {global_bit_pos}: {bit_value} ({bit_status})")
+                    if annotation:
+                        result.append(f" - {annotation}")
+                    result.append("\n")
                 
         return result
         
@@ -269,29 +299,42 @@ class ModbusParserWindow:
         
         if len(data_bytes) < 1:
             return ["数据长度不足"]
+        
+        # 判断是请求报文还是响应报文
+        # 请求报文：从机地址 + 功能码 + 起始地址(2字节) + 数量(2字节) + CRC(2字节) = 8字节
+        # 响应报文：字节数 + 数据字节 + CRC(2字节)
+        if len(data_bytes) >= 6 and data_bytes[1] in [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x0F, 0x10]:
+            # 这是请求报文
+            result.append("=== 主机请求报文解析 ===\n")
+            result.append(f"{data_bytes[0]:02X}：从机地址 ({data_bytes[0]})\n")
+            result.append(f"{data_bytes[1]:02X}：功能码 ({data_bytes[1]:02d})\n")
+            result.append(f"{data_bytes[2]:02X} {data_bytes[3]:02X}：起始地址 ({data_bytes[2] * 256 + data_bytes[3]})\n")
+            result.append(f"{data_bytes[4]:02X} {data_bytes[5]:02X}：读取数量 ({data_bytes[4] * 256 + data_bytes[5]})\n")
+            if len(data_bytes) >= 8:
+                result.append(f"{data_bytes[6]:02X} {data_bytes[7]:02X}：CRC校验\n")
+        else:
+            # 这是响应报文
+            result.append("=== 从机响应报文解析 ===\n")
+            result.append(f"{data_bytes[0]:02X}：字节数 ({data_bytes[0]} 字节)\n")
             
-        # 第一个字节是数据长度
-        data_length = data_bytes[0]
-        result.append(f"数据长度字节: {data_length:02X} ({data_length} 字节)\n")
-        
-        # 解析寄存器值（每个寄存器2字节）
-        register_count = data_length // 2
-        result.append(f"寄存器数量: {register_count}\n")
-        
-        for i in range(register_count):
-            if 1 + i * 2 + 1 < len(data_bytes):
-                high_byte = data_bytes[1 + i * 2]
-                low_byte = data_bytes[1 + i * 2 + 1]
-                register_value = (high_byte << 8) | low_byte
-                
-                result.append(f"寄存器 {i}: {register_value:04X} ({register_value})")
-                
-                # 获取注释
-                annotation_key = f"{function_code}_reg_{i}"
-                annotation = self.annotations.get(annotation_key, "")
-                if annotation:
-                    result.append(f" - {annotation}")
-                result.append("\n")
+            # 解析寄存器值（每个寄存器2字节）
+            register_count = data_bytes[0] // 2
+            result.append(f"寄存器数量: {register_count}\n")
+            
+            for i in range(register_count):
+                if 1 + i * 2 + 1 < len(data_bytes):
+                    high_byte = data_bytes[1 + i * 2]
+                    low_byte = data_bytes[1 + i * 2 + 1]
+                    register_value = (high_byte << 8) | low_byte
+                    
+                    result.append(f"寄存器 {i}: {register_value:04X} ({register_value})")
+                    
+                    # 获取注释
+                    annotation_key = f"{function_code}_reg_{i}"
+                    annotation = self.annotations.get(annotation_key, "")
+                    if annotation:
+                        result.append(f" - {annotation}")
+                    result.append("\n")
                 
         return result
         
@@ -301,25 +344,28 @@ class ModbusParserWindow:
         
         if len(data_bytes) < 4:
             return ["数据长度不足"]
-            
-        # 地址（2字节）
-        address = (data_bytes[0] << 8) | data_bytes[1]
-        result.append(f"地址: {address:04X} ({address})\n")
         
-        # 值（2字节）
-        value = (data_bytes[2] << 8) | data_bytes[3]
-        
-        if function_code == "05":  # 写线圈
-            coil_value = "开" if value == 0xFF00 else "闭"
-            result.append(f"线圈值: {value:04X} ({coil_value})\n")
-        else:  # 写寄存器
-            result.append(f"寄存器值: {value:04X} ({value})\n")
-            
-        # 获取注释
-        annotation_key = f"{function_code}_addr_{address}"
-        annotation = self.annotations.get(annotation_key, "")
-        if annotation:
-            result.append(f"注释: {annotation}\n")
+        # 判断是请求报文还是响应报文
+        # 请求报文：从机地址 + 功能码 + 起始地址(2字节) + 数量(2字节) + CRC(2字节) = 8字节
+        # 响应报文：字节数 + 数据字节 + CRC(2字节)
+        if len(data_bytes) >= 6 and data_bytes[1] in [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x0F, 0x10]:
+            # 这是请求报文
+            result.append("=== 主机请求报文解析 ===\n")
+            result.append(f"{data_bytes[0]:02X}：从机地址 ({data_bytes[0]})\n")
+            result.append(f"{data_bytes[1]:02X}：功能码 ({data_bytes[1]:02d})\n")
+            result.append(f"{data_bytes[2]:02X} {data_bytes[3]:02X}：地址 ({data_bytes[2] * 256 + data_bytes[3]})\n")
+            result.append(f"{data_bytes[4]:02X} {data_bytes[5]:02X}：写入值 ({data_bytes[4] * 256 + data_bytes[5]})\n")
+            if len(data_bytes) >= 8:
+                result.append(f"{data_bytes[6]:02X} {data_bytes[7]:02X}：CRC校验\n")
+        else:
+            # 这是响应报文
+            result.append("=== 从机响应报文解析 ===\n")
+            result.append(f"{data_bytes[0]:02X}：从机地址 ({data_bytes[0]})\n")
+            result.append(f"{data_bytes[1]:02X}：功能码 ({data_bytes[1]:02d})\n")
+            result.append(f"{data_bytes[2]:02X} {data_bytes[3]:02X}：地址 ({data_bytes[2] * 256 + data_bytes[3]})\n")
+            result.append(f"{data_bytes[4]:02X} {data_bytes[5]:02X}：写入值 ({data_bytes[4] * 256 + data_bytes[5]})\n")
+            if len(data_bytes) >= 8:
+                result.append(f"{data_bytes[6]:02X} {data_bytes[7]:02X}：CRC校验\n")
             
         return result
         
@@ -329,24 +375,41 @@ class ModbusParserWindow:
         
         if len(data_bytes) < 5:
             return ["数据长度不足"]
+        
+        # 判断是请求报文还是响应报文
+        # 请求报文：从机地址 + 功能码 + 起始地址(2字节) + 数量(2字节) + CRC(2字节) = 8字节
+        # 响应报文：字节数 + 数据字节 + CRC(2字节)
+        if len(data_bytes) >= 6 and data_bytes[1] in [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x0F, 0x10]:
+            # 这是请求报文
+            result.append("=== 主机请求报文解析 ===\n")
+            result.append(f"{data_bytes[0]:02X}：从机地址 ({data_bytes[0]})\n")
+            result.append(f"{data_bytes[1]:02X}：功能码 ({data_bytes[1]:02d})\n")
+            result.append(f"{data_bytes[2]:02X} {data_bytes[3]:02X}：起始地址 ({data_bytes[2] * 256 + data_bytes[3]})\n")
+            result.append(f"{data_bytes[4]:02X} {data_bytes[5]:02X}：数量 ({data_bytes[4] * 256 + data_bytes[5]})\n")
+            result.append(f"{data_bytes[6]:02X}：字节数 ({data_bytes[6]} 字节)\n")
             
-        # 起始地址（2字节）
-        start_address = (data_bytes[0] << 8) | data_bytes[1]
-        result.append(f"起始地址: {start_address:04X} ({start_address})\n")
-        
-        # 数量（2字节）
-        count = (data_bytes[2] << 8) | data_bytes[3]
-        result.append(f"数量: {count:04X} ({count})\n")
-        
-        # 数据长度（1字节）
-        data_length = data_bytes[4]
-        result.append(f"数据长度: {data_length:02X} ({data_length} 字节)\n")
-        
-        # 解析数据
-        if function_code == "15":  # 写多个线圈
-            result.extend(self.parse_multiple_coil_data(data_bytes[5:], start_address, count))
-        else:  # 写多个寄存器
-            result.extend(self.parse_multiple_register_data(data_bytes[5:], start_address, count))
+            # 解析数据部分
+            data_start = 7
+            data_end = len(data_bytes) - 2  # 减去CRC校验的2字节
+            if function_code == "15":  # 写多个线圈
+                result.extend(self.parse_multiple_coil_data(data_bytes[data_start:data_end], data_bytes[2] * 256 + data_bytes[3], data_bytes[4] * 256 + data_bytes[5]))
+            else:  # 写多个寄存器
+                result.extend(self.parse_multiple_register_data(data_bytes[data_start:data_end], data_bytes[2] * 256 + data_bytes[3], data_bytes[4] * 256 + data_bytes[5]))
+            
+            # 添加CRC校验
+            if len(data_bytes) >= 8:
+                result.append(f"{data_bytes[-2]:02X} {data_bytes[-1]:02X}：CRC校验\n")
+        else:
+            # 这是响应报文
+            result.append("=== 从机响应报文解析 ===\n")
+            result.append(f"{data_bytes[0]:02X}：从机地址 ({data_bytes[0]})\n")
+            result.append(f"{data_bytes[1]:02X}：功能码 ({data_bytes[1]:02d})\n")
+            result.append(f"{data_bytes[2]:02X} {data_bytes[3]:02X}：起始地址 ({data_bytes[2] * 256 + data_bytes[3]})\n")
+            result.append(f"{data_bytes[4]:02X} {data_bytes[5]:02X}：数量 ({data_bytes[4] * 256 + data_bytes[5]})\n")
+            if len(data_bytes) >= 8:
+                result.append(f"{data_bytes[6]:02X} {data_bytes[7]:02X}：CRC校验\n")
+            else:
+                result.append("响应报文格式错误，数据长度不足\n")
             
         return result
         
@@ -492,28 +555,40 @@ class ModbusParserWindow:
 1. 线圈/离散输入位注释：
    - 格式: 功能码_位位置
    - 示例: 01_0, 01_1, 02_15
+   - 说明: 用于标识具体的开关量点位
 
 2. 寄存器注释：
    - 格式: 功能码_reg_寄存器索引
    - 示例: 03_reg_0, 04_reg_1
+   - 说明: 用于标识具体的寄存器地址
 
 3. 单个写操作注释：
    - 格式: 功能码_addr_地址
    - 示例: 05_addr_1, 06_addr_100
+   - 说明: 用于标识写入操作的地址
 
 4. 多个写操作注释：
    - 格式: 功能码_coil_地址 或 功能码_reg_地址
    - 示例: 15_coil_1, 16_reg_100
+   - 说明: 用于标识批量写入的地址
 
 功能码说明：
-- 01: 读线圈状态
-- 02: 读离散输入  
-- 03: 读保持寄存器
-- 04: 读输入寄存器
-- 05: 写单个线圈
-- 06: 写单个寄存器
-- 15: 写多个线圈
-- 16: 写多个寄存器"""
+- 01: 读线圈状态 - 读取开关量输出（DO）
+- 02: 读离散输入 - 读取开关量输入（DI）
+- 03: 读保持寄存器 - 读取设备参数、设定值
+- 04: 读输入寄存器 - 读取传感器数据、测量值
+- 05: 写单个线圈 - 控制单个开关量输出
+- 06: 写单个寄存器 - 写入单个参数值
+- 15: 写多个线圈 - 同时控制多个开关量输出
+- 16: 写多个寄存器 - 同时写入多个参数值
+
+实际应用示例：
+- 01_0: 继电器1状态
+- 02_15: 传感器15状态
+- 03_reg_100: 温度设定值
+- 04_reg_200: 压力测量值
+- 05_addr_1: 继电器1控制
+- 06_addr_100: 温度设定写入"""
         
         messagebox.showinfo("注释格式帮助", help_text)
             
