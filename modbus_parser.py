@@ -59,11 +59,12 @@ class ModbusParserWindow:
         
     def create_function_code_parser(self):
         """创建功能码解析界面"""
-        # 配置网格权重 - 让内容填满整个tab区域
-        self.function_code_frame.columnconfigure(1, weight=1)
+        # 配置网格权重 - 让左右两个区域大小均衡
+        self.function_code_frame.columnconfigure(0, weight=1)  # 左侧区域权重
+        self.function_code_frame.columnconfigure(1, weight=1)  # 右侧区域权重
         self.function_code_frame.rowconfigure(0, weight=1)
         
-        # 左侧输入区域 - 添加sticky参数让输入区域填满左侧
+        # 左侧输入区域 - 设置固定宽度，让右侧区域有更多空间
         input_frame = ttk.LabelFrame(self.function_code_frame, text="数据输入", padding="10")
         input_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
         
@@ -78,15 +79,15 @@ class ModbusParserWindow:
                                           values=["01 - 读线圈状态", "02 - 读离散输入", "03 - 读保持寄存器", 
                                                  "04 - 读输入寄存器", "05 - 写单个线圈", "06 - 写单个寄存器",
                                                  "15 - 写多个线圈", "16 - 写多个寄存器"], 
-                                          width=20, state="readonly")
-        function_code_combo.grid(row=0, column=1, sticky=tk.W, pady=2)
+                                          width=25, state="readonly")
+        function_code_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), pady=2)
         function_code_combo.bind('<<ComboboxSelected>>', self.on_function_code_change)
         
         # 数据输入
         ttk.Label(input_frame, text="数据(HEX):").grid(row=1, column=0, sticky=tk.W, pady=2)
         self.data_input_var = tk.StringVar(value="01 01 00 00 00 04 3D CC")
-        data_entry = ttk.Entry(input_frame, textvariable=self.data_input_var, width=30)
-        data_entry.grid(row=1, column=1, sticky=tk.W, pady=2)
+        data_entry = ttk.Entry(input_frame, textvariable=self.data_input_var, width=35)
+        data_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), pady=2)
         
         # 解析按钮
         ttk.Button(input_frame, text="解析数据", command=self.parse_data, 
@@ -109,13 +110,13 @@ class ModbusParserWindow:
         
         ttk.Label(input_frame, text="键值:").grid(row=8, column=0, sticky=tk.W, pady=2)
         self.annotation_key_var = tk.StringVar()
-        annotation_key_entry = ttk.Entry(input_frame, textvariable=self.annotation_key_var, width=20)
-        annotation_key_entry.grid(row=8, column=1, sticky=tk.W, pady=2)
+        annotation_key_entry = ttk.Entry(input_frame, textvariable=self.annotation_key_var, width=25)
+        annotation_key_entry.grid(row=8, column=1, sticky=(tk.W, tk.E), pady=2)
         
         ttk.Label(input_frame, text="注释:").grid(row=9, column=0, sticky=tk.W, pady=2)
         self.annotation_value_var = tk.StringVar()
-        annotation_value_entry = ttk.Entry(input_frame, textvariable=self.annotation_value_var, width=20)
-        annotation_value_entry.grid(row=9, column=1, sticky=tk.W, pady=2)
+        annotation_value_entry = ttk.Entry(input_frame, textvariable=self.annotation_value_var, width=25)
+        annotation_value_entry.grid(row=9, column=1, sticky=(tk.W, tk.E), pady=2)
         
         annotation_button_frame = ttk.Frame(input_frame)
         annotation_button_frame.grid(row=10, column=0, columnspan=2, pady=5)
